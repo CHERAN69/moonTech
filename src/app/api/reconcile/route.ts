@@ -28,11 +28,11 @@ export async function POST(req: NextRequest) {
   if (!bankFile) return NextResponse.json({ error: 'Bank file required' }, { status: 400 })
 
   // Server-side file validation (fixes audit issue S3-2)
-  const bankValidationError = validateFile(bankFile)
+  const bankValidationError = validateFile(Buffer.from(await bankFile.arrayBuffer()), bankFile.name)
   if (bankValidationError) return NextResponse.json({ error: bankValidationError }, { status: 400 })
 
   if (invoiceFile) {
-    const invValidationError = validateFile(invoiceFile)
+    const invValidationError = validateFile(Buffer.from(await invoiceFile.arrayBuffer()), invoiceFile.name)
     if (invValidationError) return NextResponse.json({ error: invValidationError }, { status: 400 })
   }
 
@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Parse files (CSV or XLSX)
-  const bankResult    = await parseFile(bankFile)
-  const invoiceResult = invoiceFile ? await parseFile(invoiceFile) : null
+  const bankResult    = await parseFile(Buffer.from(await bankFile.arrayBuffer()), bankFile.name)
+  const invoiceResult = invoiceFile ? await parseFile(Buffer.from(await invoiceFile.arrayBuffer()), invoiceFile.name) : null
 
   if (bankResult.errors.length > 0) {
     return NextResponse.json({ error: bankResult.errors[0], warnings: bankResult.warnings }, { status: 400 })

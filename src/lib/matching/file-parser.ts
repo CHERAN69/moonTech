@@ -20,11 +20,11 @@ export const ALLOWED_MIME_TYPES = [
 export const ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls']
 
 /** Server-side file validation before parsing */
-export function validateFile(file: File): string | null {
-  if (file.size > MAX_FILE_SIZE_BYTES) {
+export function validateFile(fileBuffer: Buffer, fileName: string): string | null {
+  if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
     return `File too large. Maximum allowed size is ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB.`
   }
-  const ext = `.${file.name.split('.').pop()?.toLowerCase()}`
+  const ext = `.${fileName.split('.').pop()?.toLowerCase()}`
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
     return `Unsupported file type "${ext}". Please upload a CSV or XLSX file.`
   }
@@ -32,8 +32,11 @@ export function validateFile(file: File): string | null {
 }
 
 /** Parse any supported file type into a CSVParseResult */
-export async function parseFile(file: File): Promise<CSVParseResult> {
-  const validationError = validateFile(file)
+export async function parseFile(
+  fileBuffer: Buffer,
+  fileName: string
+): Promise<CSVParseResult> {
+  const validationError = validateFile(fileBuffer, fileName)
   if (validationError) {
     return {
       transactions: [],
@@ -45,19 +48,20 @@ export async function parseFile(file: File): Promise<CSVParseResult> {
     }
   }
 
-  const ext = `.${file.name.split('.').pop()?.toLowerCase()}`
+  const ext = `.${fileName.split('.').pop()?.toLowerCase()}`
 
   if (ext === '.xlsx' || ext === '.xls') {
-    return parseXLSX(file)
+    return parseXLSX(fileBuffer)
   }
 
   // Default: CSV
-  return parseCSV(file)
+  const csvFile = new File([new Uint8Array(fileBuffer)], fileName, { type: 'text/csv' })
+  return parseCSV(csvFile)
 }
 
-async function parseXLSX(file: File): Promise<CSVParseResult> {
+async function parseXLSX(buffer: Buffer): Promise<CSVParseResult> {
   try {
-    const buffer    = await file.arrayBuffer()
+    
     const workbook  = XLSX.read(buffer, { type: 'buffer', cellDates: true })
     const sheetName = workbook.SheetNames[0]
 
@@ -76,7 +80,7 @@ async function parseXLSX(file: File): Promise<CSVParseResult> {
 
     // Create a synthetic File object with CSV content
     const csvBlob = new Blob([csv], { type: 'text/csv' })
-    const csvFile = new File([csvBlob], file.name.replace(/\.xlsx?$/i, '.csv'), { type: 'text/csv' })
+    const csvFile = new File([csvBlob], 'converted.csv', { type: 'text/csv' })
 
     const result = await parseCSV(csvFile)
 

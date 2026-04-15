@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   const categoryHint = (formData.get('category_hint') as string | null) || undefined
 
   // Server-side validation (reuse existing validateFile)
-  const validationError = validateFile(file)
+  const validationError = validateFile(Buffer.from(await file.arrayBuffer()), file.name)
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
   // Create upload record immediately in "processing" state
@@ -86,7 +86,8 @@ export async function POST(req: NextRequest) {
 
   try {
     // Parse file
-    const parseResult = await parseFile(file)
+    const fileBuffer = Buffer.from(await file.arrayBuffer())
+    const parseResult = await parseFile(fileBuffer, file.name)
 
     if (parseResult.errors.length > 0 && parseResult.transactions.length === 0) {
       await supabase
