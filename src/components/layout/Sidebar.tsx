@@ -1,0 +1,190 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
+
+// ─── Icons ─────────────────────────────────────────────────────────────────
+
+function InboxIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+      <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+    </svg>
+  )
+}
+
+function AlertTriangleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  )
+}
+
+function BarChart3Icon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  )
+}
+
+function CheckCircleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4"/>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+  )
+}
+
+function FileTextIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <polyline points="10 9 9 9 8 9"/>
+    </svg>
+  )
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  )
+}
+
+// ─── Badge ─────────────────────────────────────────────────────────────────
+
+function NavBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+// ─── Nav definition ────────────────────────────────────────────────────────
+
+const NAV = [
+  { label: 'Inbox',    href: '/inbox',    Icon: InboxIcon },
+  { label: 'Review',   href: '/review',   Icon: AlertTriangleIcon },
+  { label: 'Reports',  href: '/reports',  Icon: BarChart3Icon },
+  { label: 'Close',    href: '/close',    Icon: CheckCircleIcon },
+  { label: 'Audit',    href: '/audit',    Icon: FileTextIcon },
+  { label: 'Settings', href: '/settings', Icon: SettingsIcon },
+]
+
+// ─── Sidebar ────────────────────────────────────────────────────────────────
+
+export function Sidebar() {
+  const pathname = usePathname()
+  const [reviewCount, setReviewCount] = useState(0)
+  const [inboxCount, setInboxCount]   = useState(0)
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      // Review badge: pending exceptions count
+      try {
+        const res = await fetch('/api/exceptions?resolution=pending&limit=1', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          const total = data?.total ?? data?.exceptions?.length ?? 0
+          setReviewCount(typeof total === 'number' ? total : 0)
+        }
+      } catch {
+        // Silently fail — badge just won't show
+      }
+
+      // Inbox badge: unclassified uploads count (endpoint created in Phase 2)
+      try {
+        const res = await fetch('/api/inbox/count', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          setInboxCount(data?.unclassified ?? 0)
+        }
+      } catch {
+        // Silently fail — Phase 2 creates this endpoint
+      }
+    }
+
+    fetchCounts()
+    const interval = setInterval(fetchCounts, 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <aside className="w-60 flex-shrink-0 flex flex-col border-r border-gray-100 bg-white h-screen sticky top-0">
+      {/* Logo */}
+      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-gray-100">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#1E3A5F' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 8L6 12L14 4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <span className="font-bold text-base" style={{ color: '#1E3A5F' }}>FinOpsAi</span>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {NAV.map(({ label, href, Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + '/')
+          const badgeCount =
+            label === 'Review' ? reviewCount :
+            label === 'Inbox'  ? inboxCount  : 0
+
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                active
+                  ? 'text-white'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              )}
+              style={active ? { background: '#1E3A5F' } : {}}
+            >
+              <span className={active ? 'text-white' : 'text-gray-400'}>
+                <Icon />
+              </span>
+              <span className="flex-1">{label}</span>
+              <NavBadge count={badgeCount} />
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* Bottom: upgrade card */}
+      <div className="px-3 pb-4 space-y-3">
+        <div className="rounded-xl p-4" style={{ background: '#EFF6FF' }}>
+          <div className="text-xs font-semibold mb-1" style={{ color: '#1E3A5F' }}>Starter Plan</div>
+          <div className="text-xs text-gray-500 mb-3">876/1,000 transactions used</div>
+          <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: '87%', background: '#2E75B6' }}></div>
+          </div>
+          <Link
+            href="/settings/billing"
+            className="mt-3 block text-center text-xs font-medium py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
+            style={{ background: '#2E75B6' }}
+          >
+            Upgrade to Growth →
+          </Link>
+        </div>
+      </div>
+    </aside>
+  )
+}
