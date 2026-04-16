@@ -82,9 +82,11 @@ function detectSourceType(headers: string[], filename: string): TransactionType 
 
 // ─── Main parser ──────────────────────────────────────────────────────────────
 
-export async function parseCSV(file: File): Promise<CSVParseResult> {
+export async function parseCSV(buffer: Buffer, fileName: string): Promise<CSVParseResult> {
+  const csvString = buffer.toString('utf8')
+
   return new Promise((resolve) => {
-    Papa.parse(file, {
+    Papa.parse(csvString, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
@@ -108,7 +110,7 @@ export async function parseCSV(file: File): Promise<CSVParseResult> {
         if (!amountCol) errors.push('Could not detect an amount column. Ensure your CSV has a column named "Amount", "Debit", or similar.')
         if (!descCol) warnings.push('No description column detected — transaction descriptions will be empty.')
 
-        const source_type = detectSourceType(headers, file.name)
+        const source_type = detectSourceType(headers, fileName)
 
         const transactions: RawTransaction[] = []
         let rowErrors = 0

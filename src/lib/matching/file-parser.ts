@@ -54,9 +54,8 @@ export async function parseFile(
     return parseXLSX(fileBuffer)
   }
 
-  // Default: CSV
-  const csvFile = new File([new Uint8Array(fileBuffer)], fileName, { type: 'text/csv' })
-  return parseCSV(csvFile)
+  // Default: CSV — pass buffer directly (no File/FileReader, safe in Node.js/Edge runtimes)
+  return parseCSV(fileBuffer, fileName)
 }
 
 async function parseXLSX(buffer: Buffer): Promise<CSVParseResult> {
@@ -78,11 +77,8 @@ async function parseXLSX(buffer: Buffer): Promise<CSVParseResult> {
     // This lets us reuse all the column detection logic
     const csv = XLSX.utils.sheet_to_csv(sheet)
 
-    // Create a synthetic File object with CSV content
-    const csvBlob = new Blob([csv], { type: 'text/csv' })
-    const csvFile = new File([csvBlob], 'converted.csv', { type: 'text/csv' })
-
-    const result = await parseCSV(csvFile)
+    // Convert CSV string to Buffer — no File/Blob needed, safe in Node.js/Edge runtimes
+    const result = await parseCSV(Buffer.from(csv, 'utf8'), 'converted.csv')
 
     // Add a warning about the XLSX→CSV conversion
     return {

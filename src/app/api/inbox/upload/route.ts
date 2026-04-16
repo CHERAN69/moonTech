@@ -86,8 +86,12 @@ export async function POST(req: NextRequest) {
 
   try {
     // Parse file
+    console.log(`[inbox/upload] [${uploadId}] reading file buffer — name=${file.name} size=${file.size}`)
     const fileBuffer = Buffer.from(await file.arrayBuffer())
+
+    console.log(`[inbox/upload] [${uploadId}] calling parseFile`)
     const parseResult = await parseFile(fileBuffer, file.name)
+    console.log(`[inbox/upload] [${uploadId}] parseFile done — transactions=${parseResult.transactions.length} errors=${JSON.stringify(parseResult.errors)} warnings=${JSON.stringify(parseResult.warnings)}`)
 
     if (parseResult.errors.length > 0 && parseResult.transactions.length === 0) {
       await supabase
@@ -115,14 +119,17 @@ export async function POST(req: NextRequest) {
       }))
 
     // AI classification
+    console.log(`[inbox/upload] [${uploadId}] calling classifyUpload — headers=${JSON.stringify(headers)}`)
     const classification = await classifyUpload(
       file.name,
       headers,
       sampleRows,
       categoryHint,
     )
+    console.log(`[inbox/upload] [${uploadId}] classifyUpload done — classification=${classification.classification} confidence=${classification.confidence}`)
 
     // Update upload record with classification result
+    console.log(`[inbox/upload] [${uploadId}] writing classified status to DB`)
     await supabase
       .from('uploads')
       .update({
