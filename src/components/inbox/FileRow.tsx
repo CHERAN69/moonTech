@@ -24,6 +24,7 @@ export interface FileRowData {
   suggested_period_end?: string
   transactions_count?: number
   status: 'processing' | 'classified' | 'confirmed' | 'error'
+  error_message?: string
   category_hint?: string
   session_id?: string
   created_at: string
@@ -126,6 +127,11 @@ export function FileRow({ row, onConfirm, onReclassify, onDelete }: FileRowProps
           </span>
           {row.status === 'processing' && (
             <span className="ml-1 inline-block w-3 h-3 border border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+          )}
+          {row.status === 'error' && row.error_message && (
+            <p className="text-[10px] text-red-500 mt-0.5 leading-snug" title={row.error_message}>
+              {row.error_message.slice(0, 80)}{row.error_message.length > 80 ? '…' : ''}
+            </p>
           )}
         </div>
 

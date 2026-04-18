@@ -96,8 +96,11 @@ export function UploadZone({ onUploadComplete, maxFileSizeMB = 10 }: UploadZoneP
     if (categoryHint) formData.append('category_hint', categoryHint)
 
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 90_000)
       updateEntry(id, { progress: 30 })
-      const res = await fetch('/api/inbox/upload', { method: 'POST', body: formData })
+      const res = await fetch('/api/inbox/upload', { method: 'POST', body: formData, signal: controller.signal })
+      clearTimeout(timeout)
       updateEntry(id, { progress: 80 })
 
       if (!res.ok) {
@@ -120,8 +123,9 @@ export function UploadZone({ onUploadComplete, maxFileSizeMB = 10 }: UploadZoneP
       }
       updateEntry(id, doneEntry)
       onUploadComplete(doneEntry)
-    } catch {
-      const errorEntry: FileUploadEntry = { id, file, status: 'error', progress: 0, error: 'Network error — please try again.' }
+    } catch (err) {
+      const isTimeout = err instanceof Error && err.name === 'AbortError'
+      const errorEntry: FileUploadEntry = { id, file, status: 'error', progress: 0, error: isTimeout ? 'Upload timed out — the file may be too large or the server is slow. Please try again.' : 'Network error — please try again.' }
       updateEntry(id, errorEntry)
       onUploadComplete(errorEntry)
     }
@@ -224,7 +228,10 @@ export function UploadZone({ onUploadComplete, maxFileSizeMB = 10 }: UploadZoneP
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-700 truncate">{entry.file.name}</p>
                 {entry.status === 'uploading' && (
-                  <div className="mt-1">
+                  <div className="mt-1 space-y-0.5">
+                    <p className="text-[10px] text-gray-400">
+                      {entry.progress >= 80 ? 'AI classifying…' : entry.progress >= 30 ? 'Uploading…' : 'Preparing…'}
+                    </p>
                     <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-blue-400 transition-all" style={{ width: `${entry.progress}%` }} />
                     </div>

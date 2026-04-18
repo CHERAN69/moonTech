@@ -263,7 +263,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('uploads')
-    .select('id, filename, file_size_bytes, classification, classification_confidence, classification_reasoning, detected_entity, suggested_period_start, suggested_period_end, transactions_count, status, category_hint, session_id, created_at, updated_at', { count: 'exact' })
+    .select('id, filename, file_size_bytes, classification, classification_confidence, classification_reasoning, detected_entity, suggested_period_start, suggested_period_end, transactions_count, status, error_message, category_hint, session_id, created_at, updated_at', { count: 'exact' })
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)

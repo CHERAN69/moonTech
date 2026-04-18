@@ -369,14 +369,14 @@ export function runMatchingEngine(
     pairs.push({
       id: crypto.randomUUID(),
       bank_transaction: {
-        id: `phantom-${invoice.id}`,
+        id: crypto.randomUUID(),
         date: invoice.date,
         amount: invoice.amount,
-        description: `[Missing bank payment] ${invoice.vendor || invoice.description}`,
+        description: `[Missing bank payment] ${invoice.vendor || invoice.description || 'Unknown'}`,
         vendor: invoice.vendor,
         reference: invoice.reference,
         category: undefined,
-        source: 'bank',
+        source: 'bank' as const,
         currency: invoice.currency,
       },
       invoice_transaction: invoice,

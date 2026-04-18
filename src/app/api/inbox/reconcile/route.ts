@@ -10,7 +10,6 @@
  * Input:  { bank_upload_id: string, invoice_upload_id?: string, name?: string }
  * Output: { session_id, stats, close_confidence_score }
  *
- * 10.3 — Idempotency via X-Idempotency-Key header.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -33,29 +32,6 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  // 10.3 — Idempotency key
-  const idempotencyKey = req.headers.get('X-Idempotency-Key')
-  if (idempotencyKey) {
-    const { data: existing } = await supabase
-      .from('reconciliation_sessions')
-      .select('id, close_confidence_score, matched_count, unmatched_count, flagged_count')
-      .eq('user_id', user.id)
-      .eq('id', idempotencyKey)
-      .maybeSingle()
-    if (existing) {
-      return NextResponse.json({
-        session_id:             existing.id,
-        close_confidence_score: existing.close_confidence_score,
-        stats: {
-          matched:   existing.matched_count,
-          unmatched: existing.unmatched_count,
-          flagged:   existing.flagged_count,
-        },
-        cached: true,
-      })
-    }
-  }
 
   let body: { bank_upload_id?: string; invoice_upload_id?: string; name?: string }
   try {
@@ -84,6 +60,9 @@ export async function POST(req: NextRequest) {
   if (bankUpload.status === 'error') {
     return NextResponse.json({ error: 'Bank upload has errors and cannot be reconciled' }, { status: 400 })
   }
+  if (bankUpload.classification !== 'bank_statement') {
+    return NextResponse.json({ error: 'The selected file is not classified as a bank statement. Please confirm the correct file.' }, { status: 400 })
+  }
   if (!bankUpload.parsed_data || (bankUpload.parsed_data as RawTransaction[]).length === 0) {
     return NextResponse.json({ error: 'Bank upload has no parsed transactions' }, { status: 400 })
   }
@@ -108,19 +87,29 @@ export async function POST(req: NextRequest) {
   const invoiceTransactions = (invoiceUpload?.parsed_data as RawTransaction[] | null) ?? []
 
   // Session name
-  const sessionName = (name || bankUpload.filename.replace(/\.[^.]+$/, '')).slice(0, 200)
+  const rawSessionName = name || bankUpload.filename.replace(/\.[^.]+$/, '')
+  const sessionName = rawSessionName.slice(0, 200)
+  const nameWarning = rawSessionName.length > 200 ? ['Session name was truncated to 200 characters.'] : []
 
-  // Idempotency: prevent double-click duplicate sessions
+  // Prevent duplicate sessions (processing or already complete)
   const { data: existingSession } = await supabase
     .from('reconciliation_sessions')
-    .select('id, status')
+    .select('id, status, close_confidence_score, matched_count, unmatched_count, flagged_count')
     .eq('user_id', user.id)
     .eq('name', sessionName)
-    .eq('status', 'processing')
+    .in('status', ['processing', 'complete'])
     .maybeSingle()
 
   if (existingSession) {
-    return NextResponse.json({ error: 'A reconciliation with this name is already processing.' }, { status: 409 })
+    if (existingSession.status === 'processing') {
+      return NextResponse.json({ error: 'A reconciliation with this name is already processing.' }, { status: 409 })
+    }
+    return NextResponse.json({
+      session_id:             existingSession.id,
+      close_confidence_score: existingSession.close_confidence_score,
+      stats: { matched: existingSession.matched_count, unmatched: existingSession.unmatched_count, flagged: existingSession.flagged_count },
+      cached: true,
+    })
   }
 
   // Build historical averages for vendor anomaly detection
@@ -162,10 +151,12 @@ export async function POST(req: NextRequest) {
 
   // AI explanations (non-blocking)
   let pairsWithExplanations = matchingResult.pairs
+  let aiExplanationFailed = false
   try {
     pairsWithExplanations = await explainAnomalies(matchingResult.pairs, companyName)
   } catch (aiErr) {
     console.error('[inbox/reconcile] AI explanation skipped:', aiErr)
+    aiExplanationFailed = true
   }
 
   // Determine period from transaction dates
@@ -224,12 +215,20 @@ export async function POST(req: NextRequest) {
     if (insertError) insertErrors.push(insertError.message)
   }
 
-  // Update session status
+  // Update session status — if pairs failed to insert, surface as HTTP 500
   const finalStatus = insertErrors.length > 0 ? 'error' : 'complete'
   await supabase
     .from('reconciliation_sessions')
     .update({ status: finalStatus })
     .eq('id', session.id)
+
+  if (insertErrors.length > 0) {
+    return NextResponse.json({
+      error: `Reconciliation session created but ${insertErrors.length} batch(es) failed to save. Please try again.`,
+      session_id: session.id,
+      warnings:   insertErrors,
+    }, { status: 500 })
+  }
 
   // Link uploads to session
   const uploadIds = [bank_upload_id, invoice_upload_id].filter(Boolean) as string[]
@@ -273,11 +272,16 @@ export async function POST(req: NextRequest) {
     ip_address:  ip,
   })
 
+  const warnings = [
+    ...nameWarning,
+    ...(aiExplanationFailed ? ['AI explanations unavailable — OpenAI API error. Exceptions will have no AI analysis.'] : []),
+  ]
+
   return NextResponse.json({
     session_id:             session.id,
     close_confidence_score: matchingResult.close_confidence_score,
     stats:                  matchingResult.stats,
-    warnings:               insertErrors,
+    warnings,
     status:                 finalStatus,
   })
 }

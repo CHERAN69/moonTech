@@ -64,7 +64,7 @@ function parseAmount(value: string): number | null {
   if (!value) return null
   const cleaned = value.replace(/[$,£€¥\s]/g, '').replace(/\((.+)\)/, '-$1').trim()
   const num = parseFloat(cleaned)
-  return isNaN(num) ? null : Math.abs(num)
+  return isNaN(num) ? null : num
 }
 
 function detectSourceType(headers: string[], filename: string): TransactionType {
@@ -122,7 +122,7 @@ export async function parseCSV(buffer: Buffer, fileName: string): Promise<CSVPar
           const amount = parseAmount(rawAmount)
 
           if (!date) { rowErrors++; continue }
-          if (amount === null || amount === 0) { rowErrors++; continue }
+          if (amount === null) { rowErrors++; continue }
 
           transactions.push({
             id: crypto.randomUUID(),

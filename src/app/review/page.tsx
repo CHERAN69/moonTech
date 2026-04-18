@@ -513,6 +513,10 @@ function ReviewPageInner() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setItems(json.exceptions ?? [])
+      const total = json.total ?? json.exceptions?.length ?? 0
+      if (total > (json.exceptions?.length ?? 0)) {
+        setError(`Showing ${json.exceptions?.length ?? 0} of ${total} exceptions — use filters to narrow results and ensure high-severity items are visible.`)
+      }
     } catch {
       setError('Unable to load review queue. Please try again.')
       setItems([])
@@ -644,6 +648,56 @@ function ReviewPageInner() {
             </div>
           ))}
         </div>
+
+        {/* Workflow banner — shown when there are pending items to resolve */}
+        {!loading && pending > 0 && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="text-blue-500 mt-0.5 flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-blue-800">
+                  {pending} pending exception{pending === 1 ? '' : 's'} blocking report generation
+                </p>
+                <p className="text-xs text-blue-700 mt-0.5">
+                  Approve or reject each item below to unlock reports. Once all exceptions are resolved, head to Reports.
+                </p>
+              </div>
+            </div>
+            <a
+              href="/reports"
+              className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold border border-blue-300 text-blue-700 bg-white hover:bg-blue-50 transition-colors"
+            >
+              View Reports →
+            </a>
+          </div>
+        )}
+
+        {/* Success banner — shown when all exceptions are resolved */}
+        {!loading && items.length > 0 && pending === 0 && (
+          <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-green-500 flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </span>
+              <p className="text-sm font-semibold text-green-800">
+                All exceptions resolved — reports are ready to generate
+              </p>
+            </div>
+            <a
+              href="/reports"
+              className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ background: '#16A34A' }}
+            >
+              Go to Reports →
+            </a>
+          </div>
+        )}
 
         {/* Main table card */}
         <div className="bg-white rounded-2xl border border-gray-100">

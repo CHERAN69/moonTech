@@ -93,6 +93,39 @@ export default function InboxPage() {
           </div>
         )}
 
+        {/* Workflow guide */}
+        <div className="rounded-xl border border-gray-100 bg-gray-50 px-5 py-3">
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 mb-2">How it works</p>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+            {[
+              { step: '1', label: 'Upload',       active: true },
+              { step: '2', label: 'Confirm files', active: false },
+              { step: '3', label: 'Run Reconciliation', active: false },
+              { step: '4', label: 'Review exceptions',  active: false, href: '/review' },
+              { step: '5', label: 'Generate Reports',   active: false, href: '/reports' },
+            ].map((s, i, arr) => (
+              <span key={s.step} className="flex items-center gap-1.5">
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${
+                    s.active
+                      ? 'text-white'
+                      : 'bg-white border border-gray-200 text-gray-500'
+                  }`}
+                  style={s.active ? { background: '#1E3A5F' } : {}}
+                >
+                  <span>{s.step}</span>
+                  {s.href ? (
+                    <a href={s.href} className="hover:underline">{s.label}</a>
+                  ) : (
+                    <span>{s.label}</span>
+                  )}
+                </span>
+                {i < arr.length - 1 && <span className="text-gray-300">→</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* Section A: Upload zone */}
         <section>
           <h2 className="text-sm font-semibold text-gray-700 mb-3">Upload Files</h2>

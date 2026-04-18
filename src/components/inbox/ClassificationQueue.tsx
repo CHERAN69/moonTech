@@ -35,8 +35,11 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
   }, [onRefresh])
 
   const handleReclassify = useCallback(async (id: string) => {
-    // Re-trigger classification via POST to the same upload endpoint
-    await fetch(`/api/inbox/upload/${id}/reclassify`, { method: 'POST' })
+    await fetch('/api/inbox/upload', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: 'classified' }),
+    })
     onRefresh()
   }, [onRefresh])
 
@@ -64,14 +67,17 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
         }),
       })
 
+      const data = await res.json()
+
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Reconciliation failed')
+        throw new Error(data.error || 'Reconciliation failed')
       }
 
-      const data = await res.json()
+      if (data.warnings?.length) {
+        console.warn('[reconcile] warnings:', data.warnings)
+      }
+
       onRefresh()
-      // Navigate to review to show the new exceptions
       router.push(`/review?session_id=${data.session_id}`)
     } catch (err) {
       setReconcileErr(err instanceof Error ? err.message : 'Reconciliation failed')
@@ -109,14 +115,16 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Guidance when no confirmed bank statement yet */}
+          {!canReconcile && uploads.length > 0 && (
+            <span className="text-xs text-gray-400">
+              Confirm a bank statement to run reconciliation
+            </span>
+          )}
+
           {/* Batch reconcile action */}
           {canReconcile && (
             <div className="flex items-center gap-2">
-              {!canReconcile && (
-                <span className="text-xs text-gray-400">
-                  Confirm a bank statement to run reconciliation
-                </span>
-              )}
               <button
                 onClick={handleRunReconciliation}
                 disabled={reconciling}
