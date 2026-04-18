@@ -70,6 +70,8 @@ function jaroWinkler(s1: string, s2: string, p = 0.1): number {
 const VENDOR_NORMALIZATIONS: Record<string, string> = {
   'amzn': 'amazon',
   'amzn mktp': 'amazon',
+  'amazon mktplace': 'amazon',
+  'amazon mktp': 'amazon',
   'amazon web services': 'aws',
   'amazon web svc': 'aws',
   'goog': 'google',
