@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Gather real metrics
-  const [profileResult, sessionsResult, anomaliesResult, journalResult] = await Promise.all([
+  const [profileResult, sessionsResult, anomaliesResult] = await Promise.all([
     supabase.from('profiles').select('company_name').eq('id', user.id).single(),
     supabase
       .from('reconciliation_sessions')
@@ -46,11 +46,6 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id)
       .in('status', ['unmatched', 'flagged', 'duplicate'])
       .is('resolution', null),
-    supabase
-      .from('journal_entries')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .in('status', ['draft', 'pending_approval']),
   ])
 
   const companyName      = profileResult.data?.company_name || 'your company'
@@ -58,7 +53,6 @@ export async function POST(req: NextRequest) {
   const openAnomalies    = anomaliesResult.count ?? 0
   const unmatchedTotal   = latestSession?.total_unmatched_amount ?? 0
   const closeConfidence  = latestSession?.close_confidence_score ?? 0
-  const pendingJournals  = journalResult.count ?? 0
 
   // Days since last session
   const daysSinceLastClose = 0 // Requires created_at — add if needed

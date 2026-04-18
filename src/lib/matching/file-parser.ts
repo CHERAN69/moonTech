@@ -5,7 +5,6 @@
  * Server-side validation added for file type and size (S3-2).
  */
 
-import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import type { CSVParseResult, RawTransaction } from '@/types'
 import { parseCSV } from './csv-parser'

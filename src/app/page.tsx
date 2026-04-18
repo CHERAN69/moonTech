@@ -11,7 +11,6 @@ import {
   BrainCircuit,
   ShieldCheck,
   Link2,
-  Zap,
 } from 'lucide-react'
 
 export default function Home() {

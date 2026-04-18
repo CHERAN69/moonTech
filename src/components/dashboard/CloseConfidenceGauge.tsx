@@ -9,12 +9,6 @@ export function CloseConfidenceGauge({ score }: Props) {
   const label = score >= 80 ? 'Close Ready' : score >= 50 ? 'In Progress' : 'Needs Attention'
   const bgColor = score >= 80 ? '#F0FDF4' : score >= 50 ? '#FFFBEB' : '#FEF2F2'
 
-  // SVG arc math
-  const radius = 70
-  const circumference = Math.PI * radius // half circle
-  const strokeDash = (score / 100) * circumference
-  const rotate = -180
-
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-2">

@@ -6,7 +6,7 @@
  * 2. AI layer (OpenAI) → explains anomalies, fills gaps, scores everything
  */
 
-import { RawTransaction, MatchedPair, MatchStatus, MatchFlag, MatchMethod } from '@/types'
+import { RawTransaction, MatchedPair, MatchFlag, MatchMethod } from '@/types'
 import { differenceInDays, parseISO } from 'date-fns'
 
 // ─── Config ──────────────────────────────────────────────────────────────────

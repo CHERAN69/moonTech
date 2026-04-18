@@ -148,9 +148,6 @@ export default function ReconciliationResultsPage() {
     ? `${new Date(session.period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(session.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
     : ''
 
-  const scoreColor = session
-    ? session.close_confidence_score >= 80 ? '#16A34A' : session.close_confidence_score >= 50 ? '#D97706' : '#DC2626'
-    : '#6B7280'
 
   if (loading) {
     return (

@@ -8,7 +8,6 @@
  */
 
 import { useState } from 'react'
-import { cn } from '@/lib/utils'
 import { ConfidenceBadge } from '@/components/trust/ConfidenceBadge'
 import { AIReasoningCard } from '@/components/trust/AIReasoningCard'
 

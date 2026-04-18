@@ -28,7 +28,7 @@ export async function PATCH(
     return NextResponse.json({ error: parse.error.issues[0].message }, { status: 422 })
   }
 
-  const { action, description, lines, note: _note } = parse.data
+  const { action, description, lines } = parse.data
 
   // Approve/reject require admin+
   if (action === 'approve' || action === 'post') {

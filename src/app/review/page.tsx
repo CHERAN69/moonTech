@@ -667,12 +667,12 @@ function ReviewPageInner() {
                 </p>
               </div>
             </div>
-            <a
+            <Link
               href="/reports"
               className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold border border-blue-300 text-blue-700 bg-white hover:bg-blue-50 transition-colors"
             >
               View Reports →
-            </a>
+            </Link>
           </div>
         )}
 
@@ -689,13 +689,13 @@ function ReviewPageInner() {
                 All exceptions resolved — reports are ready to generate
               </p>
             </div>
-            <a
+            <Link
               href="/reports"
               className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
               style={{ background: '#16A34A' }}
             >
               Go to Reports →
-            </a>
+            </Link>
           </div>
         )}
 

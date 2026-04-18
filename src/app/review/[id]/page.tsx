@@ -162,7 +162,6 @@ export default function ReviewDetailPage() {
   const statusCfg     = STATUS_LABELS[item.status] ?? STATUS_LABELS['unmatched']
   const workflowState = toWorkflowState(item)
   const isPending     = !item.resolution
-  const hasBankTx     = !!item.bank_transaction
   const hasInvTx      = !!item.invoice_transaction
   const vendor        = item.bank_transaction.vendor || item.bank_transaction.description
 

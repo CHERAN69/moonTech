@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { TopBar } from '@/components/layout/TopBar'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -471,13 +472,13 @@ export default function ReportsPage() {
                 </p>
               </div>
             </div>
-            <a
+            <Link
               href="/review?resolution=pending"
               className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
               style={{ background: '#D97706' }}
             >
               Go to Review →
-            </a>
+            </Link>
           </div>
         )}
 
@@ -500,9 +501,9 @@ export default function ReportsPage() {
                   {safeMetrics.unmatchedCount === 0
                     ? 'No unmatched transactions'
                     : (
-                      <a href="/review?resolution=pending" className="text-red-500 font-medium hover:underline">
+                      <Link href="/review?resolution=pending" className="text-red-500 font-medium hover:underline">
                         {safeMetrics.unmatchedCount} unmatched — resolve in Review
-                      </a>
+                      </Link>
                     )}
                 </span>
               </div>

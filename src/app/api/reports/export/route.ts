@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const reportType = searchParams.get('type') || 'reconciliation'
-  const format     = searchParams.get('format') || 'csv'
   const sessionId  = searchParams.get('session_id')
   const dateFrom   = searchParams.get('date_from')
   const dateTo     = searchParams.get('date_to')

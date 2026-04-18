@@ -33,7 +33,6 @@ export interface GLOverrideModalProps {
 }
 
 export function GLOverrideModal({
-  pairId,
   currentGL,
   vendorName,
   onSave,

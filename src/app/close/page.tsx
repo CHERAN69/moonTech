@@ -56,7 +56,7 @@ function CloseOSPageInner() {
   const [checklistId, setChecklistId]     = useState<string | null>(null)
   const [signedOff, setSignedOff]         = useState(false)
   const [periodStart, setPeriodStart]     = useState('')
-  const [periodEnd, setPeriodEnd]         = useState('')
+  const [, setPeriodEnd]                  = useState('')
   const [loading, setLoading]             = useState(true)
   const [saving, setSaving]               = useState<string | null>(null)
   const [journals, setJournals]           = useState<JournalEntry[]>([])

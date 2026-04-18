@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Fetch historical averages for vendor anomaly detection (fixes audit issue S3-6)
-  const { data: vendorMappings } = await supabase
+  await supabase
     .from('vendor_mappings')
     .select('canonical_name, gl_category')
     .eq('user_id', user.id)
@@ -160,7 +160,6 @@ export async function POST(req: NextRequest) {
   }))
 
   const BATCH_SIZE = 100
-  let insertedCount = 0
   const insertErrors: string[] = []
 
   for (let i = 0; i < pairRows.length; i += BATCH_SIZE) {
@@ -168,8 +167,6 @@ export async function POST(req: NextRequest) {
     const { error: insertError } = await supabase.from('match_pairs').insert(batch)
     if (insertError) {
       insertErrors.push(insertError.message)
-    } else {
-      insertedCount += batch.length
     }
   }
 
