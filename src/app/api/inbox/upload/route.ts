@@ -55,8 +55,12 @@ export async function POST(req: NextRequest) {
 
   const categoryHint = (formData.get('category_hint') as string | null) || undefined
 
+  // Read the file buffer once — calling file.arrayBuffer() multiple times
+  // can return empty data in Next.js server runtimes after the first read.
+  const fileBuffer = Buffer.from(await file.arrayBuffer())
+
   // Server-side validation (reuse existing validateFile)
-  const validationError = validateFile(Buffer.from(await file.arrayBuffer()), file.name)
+  const validationError = validateFile(fileBuffer, file.name)
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
   // Create upload record immediately in "processing" state
@@ -85,9 +89,8 @@ export async function POST(req: NextRequest) {
   const uploadId = uploadRecord.id
 
   try {
-    // Parse file
-    console.log(`[inbox/upload] [${uploadId}] reading file buffer — name=${file.name} size=${file.size}`)
-    const fileBuffer = Buffer.from(await file.arrayBuffer())
+    // Parse file (fileBuffer was read once before validation — reuse it here)
+    console.log(`[inbox/upload] [${uploadId}] parsing file buffer — name=${file.name} size=${file.size}`)
 
     console.log(`[inbox/upload] [${uploadId}] calling parseFile`)
     const parseResult = await parseFile(fileBuffer, file.name)
