@@ -43,6 +43,15 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
     onRefresh()
   }, [onRefresh])
 
+  const handleManualClassify = useCallback(async (id: string, classification: string) => {
+    await fetch('/api/inbox/upload', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, classification }),
+    })
+    onRefresh()
+  }, [onRefresh])
+
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Delete this upload? This cannot be undone.')) return
     await fetch(`/api/inbox/upload?id=${id}`, { method: 'DELETE' })
@@ -205,6 +214,7 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
           row={row}
           onConfirm={handleConfirm}
           onReclassify={handleReclassify}
+          onManualClassify={handleManualClassify}
           onDelete={handleDelete}
         />
       ))}

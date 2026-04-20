@@ -31,9 +31,10 @@ export interface FileRowData {
 
 interface FileRowProps {
   row: FileRowData
-  onConfirm:    (id: string) => void
-  onReclassify: (id: string) => void
-  onDelete:     (id: string) => void
+  onConfirm:        (id: string) => void
+  onReclassify:     (id: string) => void
+  onManualClassify: (id: string, classification: string) => void
+  onDelete:         (id: string) => void
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
@@ -64,9 +65,20 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('default', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-export function FileRow({ row, onConfirm, onReclassify, onDelete }: FileRowProps) {
-  const [expanded, setExpanded] = useState(false)
-  const statusCfg = STATUS_CONFIG[row.status] ?? STATUS_CONFIG['processing']
+const CLASSIFIABLE_OPTIONS = [
+  { value: 'bank_statement',  label: 'Bank Statement' },
+  { value: 'invoice',         label: 'Invoice / AR' },
+  { value: 'payroll',         label: 'Payroll' },
+  { value: 'journal_entry',   label: 'Journal Entry' },
+  { value: 'receipt',         label: 'Receipt' },
+  { value: 'expense_report',  label: 'Expense Report' },
+  { value: 'other',           label: 'Other' },
+]
+
+export function FileRow({ row, onConfirm, onReclassify, onManualClassify, onDelete }: FileRowProps) {
+  const [expanded, setExpanded]             = useState(false)
+  const [showClassifyMenu, setShowClassify] = useState(false)
+  const statusCfg  = STATUS_CONFIG[row.status] ?? STATUS_CONFIG['processing']
   const classLabel = row.classification ? (CLASS_LABELS[row.classification] || row.classification) : '—'
 
   return (
@@ -135,7 +147,7 @@ export function FileRow({ row, onConfirm, onReclassify, onDelete }: FileRowProps
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="relative flex items-center gap-1.5 flex-shrink-0">
           {row.status === 'classified' && (
             <button
               onClick={() => onConfirm(row.id)}
@@ -147,13 +159,33 @@ export function FileRow({ row, onConfirm, onReclassify, onDelete }: FileRowProps
             </button>
           )}
           {row.status !== 'processing' && row.status !== 'error' && (
-            <button
-              onClick={() => onReclassify(row.id)}
-              title="Re-classify"
-              className="px-2.5 py-1 rounded-lg text-[10px] font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
-            >
-              Re-classify
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowClassify(v => !v)}
+                title="Change classification"
+                className="px-2.5 py-1 rounded-lg text-[10px] font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                {row.classification === 'other' || !row.classification ? '⚠ Set type ▾' : 'Re-classify ▾'}
+              </button>
+              {showClassifyMenu && (
+                <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[160px]">
+                  {CLASSIFIABLE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        onManualClassify(row.id, opt.value)
+                        setShowClassify(false)
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors ${
+                        row.classification === opt.value ? 'font-semibold text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           <button
             onClick={() => setExpanded(e => !e)}

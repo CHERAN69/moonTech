@@ -203,12 +203,17 @@ export async function POST(req: NextRequest) {
 }
 }
 
+const ALLOWED_CLASSIFICATIONS = [
+  'bank_statement', 'invoice', 'payroll', 'journal_entry',
+  'receipt', 'expense_report', 'other',
+]
+
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { id?: string; status?: string }
+  let body: { id?: string; status?: string; classification?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
   if (!body.id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
@@ -218,9 +223,27 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
+  if (body.classification && !ALLOWED_CLASSIFICATIONS.includes(body.classification)) {
+    return NextResponse.json({ error: 'Invalid classification' }, { status: 400 })
+  }
+
+  // Build update payload
+  const updates: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+  if (body.status) updates.status = body.status
+  if (body.classification) {
+    updates.classification = body.classification
+    // Mark as manually classified with high confidence
+    updates.classification_confidence    = 100
+    updates.classification_reasoning     = 'Manually classified by user.'
+    // If reclassifying, move to classified state (needs re-confirm)
+    if (!body.status) updates.status = 'classified'
+  }
+
   const { error } = await supabase
     .from('uploads')
-    .update({ status: body.status || 'confirmed', updated_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', body.id)
     .eq('user_id', user.id)
 

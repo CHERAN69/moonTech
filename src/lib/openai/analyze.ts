@@ -346,6 +346,80 @@ export type UploadClassificationResult = {
   column_mapping: Record<string, string>
 }
 
+/**
+ * Heuristic classification based on filename + column headers.
+ * Used as a fallback when OpenAI is unavailable or returns a low-confidence result.
+ */
+function heuristicClassify(
+  filename: string,
+  headers: string[],
+): { classification: string; confidence: number; reasoning: string } | null {
+  const name       = filename.toLowerCase().replace(/[^a-z0-9]/g, ' ')
+  const headerStr  = headers.map(h => h.toLowerCase()).join(' ')
+
+  // Bank statement patterns
+  if (
+    /\b(bank|transaction|statement|ledger|checking|savings|account)\b/.test(name) ||
+    /\b(balance|debit|credit|account_number|account number|opening balance)\b/.test(headerStr)
+  ) {
+    return {
+      classification: 'bank_statement',
+      confidence: 80,
+      reasoning: `Filename "${filename}" and/or column headers suggest this is a bank statement (heuristic fallback — AI classification unavailable).`,
+    }
+  }
+
+  // Invoice / AP patterns
+  if (
+    /\b(invoice|bill|ap_|ar_|accounts.?payable|accounts.?receivable|vendor.?bill)\b/.test(name) ||
+    /\b(invoice.?number|invoice_number|bill.?number|due.?date|vendor.?id)\b/.test(headerStr)
+  ) {
+    return {
+      classification: 'invoice',
+      confidence: 78,
+      reasoning: `Filename "${filename}" and/or column headers suggest this is an invoice/AP file (heuristic fallback — AI classification unavailable).`,
+    }
+  }
+
+  // Payroll
+  if (
+    /\b(payroll|salary|compensation|wages|paystub|pay.?stub)\b/.test(name) ||
+    /\b(employee.?id|gross.?pay|net.?pay|hours.?worked)\b/.test(headerStr)
+  ) {
+    return {
+      classification: 'payroll',
+      confidence: 78,
+      reasoning: `Filename "${filename}" and/or column headers suggest this is a payroll file (heuristic fallback).`,
+    }
+  }
+
+  // Journal entry
+  if (
+    /\b(journal|je_|gl_|general.?ledger|chart.?of.?accounts)\b/.test(name) ||
+    /\b(debit.?account|credit.?account|journal.?entry|posting.?date)\b/.test(headerStr)
+  ) {
+    return {
+      classification: 'journal_entry',
+      confidence: 75,
+      reasoning: `Filename "${filename}" and/or column headers suggest this is a journal entry file (heuristic fallback).`,
+    }
+  }
+
+  // Expense report
+  if (
+    /\b(expense|reimbursement|travel|receipts)\b/.test(name) ||
+    /\b(expense.?category|reimbursable|mileage)\b/.test(headerStr)
+  ) {
+    return {
+      classification: 'expense_report',
+      confidence: 72,
+      reasoning: `Filename "${filename}" and/or column headers suggest this is an expense report (heuristic fallback).`,
+    }
+  }
+
+  return null
+}
+
 export async function classifyUpload(
   filename: string,
   headers: string[],
@@ -392,18 +466,48 @@ canonical_name must be one of: date, amount, description, vendor, reference, bal
       })
     )
     const parsed = JSON.parse(response.choices[0].message.content || '{}')
+    const aiClassification = parsed.classification as string | undefined
+    const aiConfidence     = Math.min(100, Math.max(0, Number(parsed.confidence) || 0))
+
+    // If AI returned 'other' with low confidence, try heuristic before giving up
+    if ((!aiClassification || aiClassification === 'other') && aiConfidence < 60) {
+      const heuristic = heuristicClassify(filename, headers)
+      if (heuristic) {
+        return {
+          classification:   heuristic.classification,
+          confidence:       heuristic.confidence,
+          reasoning:        heuristic.reasoning,
+          detected_entity:  parsed.detected_entity  || null,
+          suggested_period: parsed.suggested_period || null,
+          column_mapping:   parsed.column_mapping   || {},
+        }
+      }
+    }
+
     return {
-      classification:   parsed.classification   || 'other',
-      confidence:       Math.min(100, Math.max(0, Number(parsed.confidence) || 0)),
+      classification:   aiClassification || 'other',
+      confidence:       aiConfidence,
       reasoning:        parsed.reasoning        || '',
       detected_entity:  parsed.detected_entity  || null,
       suggested_period: parsed.suggested_period || null,
       column_mapping:   parsed.column_mapping   || {},
     }
   } catch {
+    // OpenAI unavailable — use heuristic before falling back to 'other'
+    const heuristic = heuristicClassify(filename, headers)
+    if (heuristic) {
+      return {
+        classification:   heuristic.classification,
+        confidence:       heuristic.confidence,
+        reasoning:        heuristic.reasoning,
+        detected_entity:  null,
+        suggested_period: null,
+        column_mapping:   {},
+      }
+    }
     return {
       classification: 'other', confidence: 0,
-      reasoning: 'Classification failed — please classify manually.',
+      reasoning: 'Classification failed — please use the dropdown to classify manually.',
       detected_entity: null, suggested_period: null, column_mapping: {},
     }
   }
