@@ -58,6 +58,12 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
     onRefresh()
   }, [onRefresh])
 
+  const handleDeleteAll = useCallback(async () => {
+    if (!confirm(`Delete all ${uploads.length} file${uploads.length !== 1 ? 's' : ''} from the queue? This cannot be undone.`)) return
+    await Promise.all(uploads.map(u => fetch(`/api/inbox/upload?id=${u.id}`, { method: 'DELETE' })))
+    onRefresh()
+  }, [uploads, onRefresh])
+
   const handleRunReconciliation = useCallback(async () => {
     if (!canReconcile) return
     setReconciling(true)
@@ -159,6 +165,15 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
             </div>
           )}
 
+          {uploads.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+              title="Delete all files in the queue"
+            >
+              🗑 Clear All
+            </button>
+          )}
           <button
             onClick={onRefresh}
             className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
