@@ -40,8 +40,12 @@ export default function InboxPage() {
   useEffect(() => { fetchUploads() }, [fetchUploads])
 
   const handleUploadComplete = useCallback((entry: FileUploadEntry) => {
-    // When an upload completes, add it to the top of the list optimistically
     if (entry.status === 'done' && entry.result) {
+      // If auto-reconcile ran, redirect straight to Review
+      if (entry.result.auto_session_id) {
+        window.location.href = `/review?session_id=${entry.result.auto_session_id}`
+        return
+      }
       const newRow: FileRowData = {
         id:                         entry.result.upload_id,
         filename:                   entry.file.name,
@@ -49,35 +53,25 @@ export default function InboxPage() {
         classification:             entry.result.classification,
         classification_confidence:  entry.result.confidence,
         transactions_count:         entry.result.transactions_count,
-        status:                     'classified',
+        status:                     entry.result.auto_confirmed ? 'confirmed' : 'classified',
         created_at:                 new Date().toISOString(),
       }
       setUploads(prev => [newRow, ...prev])
-      setTotal(prev => prev + 1)
+      setTotal(prev => prev + (entry.result!.auto_confirmed ? 0 : 1))
+      // Refresh queue so confirmed status shows correctly
+      if (entry.result.auto_confirmed) fetchUploads()
     } else if (entry.status === 'error') {
-      // Still trigger a refresh to show accurate state
       fetchUploads()
     }
   }, [fetchUploads])
 
-  // Pending count for TopBar badge
   const pendingCount = uploads.filter(u => u.status === 'classified').length
 
   return (
     <div className="flex flex-col h-full">
       <TopBar
         title="Inbox"
-        subtitle="Upload documents — AI classifies and queues them for action"
-        actions={
-          pendingCount > 0 ? (
-            <span
-              className="text-xs font-semibold px-2.5 py-1 rounded-full text-white"
-              style={{ background: '#D97706' }}
-            >
-              {pendingCount} need confirmation
-            </span>
-          ) : undefined
-        }
+        subtitle="Drop your files — AI classifies and reconciles automatically"
       />
 
       <div className="flex-1 p-6 space-y-6 max-w-5xl">
@@ -94,35 +88,29 @@ export default function InboxPage() {
         )}
 
         {/* Workflow guide */}
-        <div className="rounded-xl border border-gray-100 bg-gray-50 px-5 py-3">
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 mb-2">How it works</p>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+        <div className="rounded-xl border border-blue-100 bg-blue-50 px-5 py-3">
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-blue-400 mb-2">How it works</p>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-blue-700">
             {[
-              { step: '1', label: 'Upload',       active: true },
-              { step: '2', label: 'Confirm files', active: false },
-              { step: '3', label: 'Run Reconciliation', active: false },
-              { step: '4', label: 'Review exceptions',  active: false, href: '/review' },
-              { step: '5', label: 'Generate Reports',   active: false, href: '/reports' },
+              { step: '1', label: 'Drop your files',              auto: false },
+              { step: '2', label: 'AI classifies automatically',  auto: true  },
+              { step: '3', label: 'Reconciliation runs itself',   auto: true  },
+              { step: '4', label: 'Review flagged items',         auto: false, href: '/review' },
             ].map((s, i, arr) => (
               <span key={s.step} className="flex items-center gap-1.5">
                 <span
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${
-                    s.active
-                      ? 'text-white'
-                      : 'bg-white border border-gray-200 text-gray-500'
+                    s.auto ? 'text-white' : 'bg-white border border-blue-200 text-blue-600'
                   }`}
-                  style={s.active ? { background: '#1E3A5F' } : {}}
+                  style={s.auto ? { background: '#1E3A5F' } : {}}
                 >
-                  <span>{s.step}</span>
-                  {s.href ? (
-                    <a href={s.href} className="hover:underline">{s.label}</a>
-                  ) : (
-                    <span>{s.label}</span>
-                  )}
+                  {s.auto && <span className="text-[9px]">✦</span>}
+                  {s.href ? <a href={s.href} className="hover:underline">{s.label}</a> : <span>{s.label}</span>}
                 </span>
-                {i < arr.length - 1 && <span className="text-gray-300">→</span>}
+                {i < arr.length - 1 && <span className="text-blue-200">→</span>}
               </span>
             ))}
+            <span className="text-[10px] text-blue-400 ml-1">✦ automated</span>
           </div>
         </div>
 

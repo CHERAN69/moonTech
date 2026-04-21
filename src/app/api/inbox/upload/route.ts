@@ -14,8 +14,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit, getIP, API_LIMIT } from '@/lib/rate-limit'
 import { validateFile, parseFile } from '@/lib/matching/file-parser'
-import { classifyUpload } from '@/lib/openai/analyze'
+import { classifyUpload, explainAnomalies } from '@/lib/openai/analyze'
 import { sanitizeForPrompt } from '@/lib/validation'
+import { runMatchingEngine } from '@/lib/matching/engine'
+import type { RawTransaction } from '@/types'
 
 export async function POST(req: NextRequest) {
   const ip = getIP(req)
@@ -131,8 +133,12 @@ export async function POST(req: NextRequest) {
     )
     console.log(`[inbox/upload] [${uploadId}] classifyUpload done — classification=${classification.classification} confidence=${classification.confidence}`)
 
+    // Auto-confirm when AI is confident (≥80) and not "other"
+    const autoConfirm = classification.classification !== 'other' && classification.confidence >= 80
+    const uploadStatus = autoConfirm ? 'confirmed' : 'classified'
+
     // Update upload record with classification result
-    console.log(`[inbox/upload] [${uploadId}] writing classified status to DB`)
+    console.log(`[inbox/upload] [${uploadId}] writing ${uploadStatus} status to DB`)
     await supabase
       .from('uploads')
       .update({
@@ -145,7 +151,7 @@ export async function POST(req: NextRequest) {
         column_mapping:              classification.column_mapping,
         transactions_count:          parseResult.transactions.length,
         parsed_data:                 parseResult.transactions,
-        status:                      'classified',
+        status:                      uploadStatus,
       })
       .eq('id', uploadId)
 
@@ -154,16 +160,125 @@ export async function POST(req: NextRequest) {
       user_id:     user.id,
       entity_type: 'upload',
       entity_id:   uploadId,
-      action:      'classified',
+      action:      autoConfirm ? 'auto_confirmed' : 'classified',
       changes: {
         filename:         file.name,
         classification:   classification.classification,
         confidence:       classification.confidence,
         rows_parsed:      parseResult.transactions.length,
+        auto_confirmed:   autoConfirm,
       },
       ai_involved: true,
       ip_address:  ip,
     })
+
+    // ── Auto-reconcile ───────────────────────────────────────────────────────
+    // If this upload auto-confirmed, check if we now have a bank + invoice pair
+    // ready to reconcile. If so, run it automatically and return the session_id.
+    let autoSessionId: string | null = null
+
+    if (autoConfirm && (classification.classification === 'bank_statement' || classification.classification === 'invoice')) {
+      const isBank    = classification.classification === 'bank_statement'
+      const lookingFor = isBank ? 'invoice' : 'bank_statement'
+
+      const { data: partner } = await supabase
+        .from('uploads')
+        .select('id, filename, parsed_data, classification')
+        .eq('user_id', user.id)
+        .eq('classification', lookingFor)
+        .eq('status', 'confirmed')
+        .is('session_id', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const bankUploadId    = isBank ? uploadId    : partner?.id
+      const invoiceUploadId = isBank ? partner?.id : uploadId
+      const bankTxns        = (isBank ? parseResult.transactions : (partner?.parsed_data as RawTransaction[] | null) ?? []) as RawTransaction[]
+      const invoiceTxns     = (isBank ? (partner?.parsed_data as RawTransaction[] | null) ?? [] : parseResult.transactions) as RawTransaction[]
+
+      if (bankUploadId && bankTxns.length > 0) {
+        try {
+          const matchResult = runMatchingEngine(bankTxns, invoiceTxns)
+
+          let pairsWithExplanations = matchResult.pairs
+          try {
+            pairsWithExplanations = await explainAnomalies(matchResult.pairs, 'your company')
+          } catch { /* AI explanations optional */ }
+
+          const allDates    = bankTxns.map(t => t.date).filter(Boolean).sort()
+          const periodStart = allDates[0]    || new Date().toISOString().split('T')[0]
+          const periodEnd   = allDates[allDates.length - 1] || periodStart
+          const sessionName = file.name.replace(/\.[^.]+$/, '') + ' — Auto Reconciliation'
+
+          const { data: session } = await supabase
+            .from('reconciliation_sessions')
+            .insert({
+              user_id:                    user.id,
+              name:                       sessionName.slice(0, 200),
+              period_start:               periodStart,
+              period_end:                 periodEnd,
+              status:                     'processing',
+              close_confidence_score:     matchResult.close_confidence_score,
+              total_bank_transactions:    bankTxns.length,
+              total_invoice_transactions: invoiceTxns.length,
+              matched_count:              matchResult.stats.matched,
+              unmatched_count:            matchResult.stats.unmatched,
+              flagged_count:              matchResult.stats.flagged,
+              duplicate_count:            matchResult.stats.duplicates,
+              total_matched_amount:       matchResult.stats.total_matched_amount,
+              total_unmatched_amount:     matchResult.stats.total_unmatched_amount,
+            })
+            .select('id')
+            .single()
+
+          if (session) {
+            const pairRows = pairsWithExplanations.map(p => ({
+              session_id:          session.id,
+              user_id:             user.id,
+              bank_transaction:    p.bank_transaction,
+              invoice_transaction: p.invoice_transaction || null,
+              status:              p.status,
+              confidence:          p.confidence,
+              match_method:        p.match_method,
+              explanation:         p.explanation || null,
+              suggested_action:    p.suggested_action || null,
+              gl_category:         p.gl_category || null,
+              flags:               p.flags,
+            }))
+
+            const BATCH = 100
+            for (let i = 0; i < pairRows.length; i += BATCH) {
+              await supabase.from('match_pairs').insert(pairRows.slice(i, i + BATCH))
+            }
+
+            await supabase
+              .from('reconciliation_sessions')
+              .update({ status: 'complete' })
+              .eq('id', session.id)
+
+            // Link both uploads to session
+            const uploadIds = [bankUploadId, invoiceUploadId].filter(Boolean) as string[]
+            await supabase.from('uploads').update({ session_id: session.id }).in('id', uploadIds)
+
+            await supabase.from('audit_log').insert({
+              user_id:     user.id,
+              entity_type: 'reconciliation_session',
+              entity_id:   session.id,
+              action:      'auto_reconciled',
+              changes:     { bank_upload_id: bankUploadId, invoice_upload_id: invoiceUploadId, matched: matchResult.stats.matched, unmatched: matchResult.stats.unmatched },
+              ai_involved: true,
+              ip_address:  ip,
+            })
+
+            autoSessionId = session.id
+          }
+        } catch (reconcileErr) {
+          console.error('[inbox/upload] auto-reconcile failed:', reconcileErr)
+          // Non-fatal — upload still succeeds
+        }
+      }
+    }
 
     return NextResponse.json({
       upload_id:            uploadId,
@@ -175,7 +290,9 @@ export async function POST(req: NextRequest) {
       column_mapping:       classification.column_mapping,
       transactions_count:   parseResult.transactions.length,
       warnings:             parseResult.warnings,
-      status:               'classified',
+      status:               uploadStatus,
+      auto_confirmed:       autoConfirm,
+      auto_session_id:      autoSessionId,
     })
   } catch (err) {
   console.error('[inbox/upload] Unexpected error:', err)

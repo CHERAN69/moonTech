@@ -23,6 +23,8 @@ export interface FileUploadEntry {
     classification: string
     confidence: number
     transactions_count: number
+    auto_confirmed?: boolean
+    auto_session_id?: string | null
   }
 }
 
