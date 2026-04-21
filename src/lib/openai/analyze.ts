@@ -348,72 +348,68 @@ export type UploadClassificationResult = {
 
 /**
  * Heuristic classification based on filename + column headers.
- * Used as a fallback when OpenAI is unavailable or returns a low-confidence result.
+ * Runs first — faster and works without OpenAI.
  */
 function heuristicClassify(
   filename: string,
   headers: string[],
 ): { classification: UploadClassificationResult['classification']; confidence: number; reasoning: string } | null {
-  const name       = filename.toLowerCase().replace(/[^a-z0-9]/g, ' ')
-  const headerStr  = headers.map(h => h.toLowerCase()).join(' ')
+  // Sanitize: lowercase, replace non-alphanumeric with space
+  const name      = filename.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim()
+  const headerStr = headers.map(h => h.toLowerCase()).join(' ')
 
-  // Bank statement patterns
-  if (
-    /\b(bank|transaction|statement|ledger|checking|savings|account)\b/.test(name) ||
-    /\b(balance|debit|credit|account_number|account number|opening balance)\b/.test(headerStr)
-  ) {
+  // Bank statement — check name words AND header keywords
+  const bankNameMatch = /\b(bank|transactions?|statement|ledger|checking|savings|account)\b/.test(name)
+  const bankHdrMatch  = /\b(balance|debit|credit|account.?number|opening.?balance|available.?balance)\b/.test(headerStr)
+  if (bankNameMatch || bankHdrMatch) {
     return {
       classification: 'bank_statement',
-      confidence: 80,
-      reasoning: `Filename "${filename}" and/or column headers suggest this is a bank statement (heuristic fallback — AI classification unavailable).`,
+      confidence: 85,
+      reasoning: `Filename "${filename}" and/or column headers match bank statement patterns.`,
     }
   }
 
-  // Invoice / AP patterns
-  if (
-    /\b(invoice|bill|ap_|ar_|accounts.?payable|accounts.?receivable|vendor.?bill)\b/.test(name) ||
-    /\b(invoice.?number|invoice_number|bill.?number|due.?date|vendor.?id)\b/.test(headerStr)
-  ) {
+  // Invoice / AP — "ap", "ar", "invoice(s)", "bill(s)", "payable", "receivable"
+  const invNameMatch = /\b(invoices?|bills?|ap|ar|accounts?\s*payable|accounts?\s*receivable|vendor)\b/.test(name)
+  const invHdrMatch  = /\b(invoice.?number|invoice_number|bill.?number|due.?date|vendor.?id|po.?number)\b/.test(headerStr)
+  if (invNameMatch || invHdrMatch) {
     return {
       classification: 'invoice',
-      confidence: 78,
-      reasoning: `Filename "${filename}" and/or column headers suggest this is an invoice/AP file (heuristic fallback — AI classification unavailable).`,
+      confidence: 83,
+      reasoning: `Filename "${filename}" and/or column headers match invoice/AP patterns.`,
     }
   }
 
   // Payroll
-  if (
-    /\b(payroll|salary|compensation|wages|paystub|pay.?stub)\b/.test(name) ||
-    /\b(employee.?id|gross.?pay|net.?pay|hours.?worked)\b/.test(headerStr)
-  ) {
+  const payNameMatch = /\b(payroll|salary|salaries|compensation|wages|paystub|pay.?stub|payslip)\b/.test(name)
+  const payHdrMatch  = /\b(employee.?id|gross.?pay|net.?pay|hours.?worked|pay.?period)\b/.test(headerStr)
+  if (payNameMatch || payHdrMatch) {
     return {
       classification: 'payroll',
-      confidence: 78,
-      reasoning: `Filename "${filename}" and/or column headers suggest this is a payroll file (heuristic fallback).`,
+      confidence: 82,
+      reasoning: `Filename "${filename}" and/or column headers match payroll patterns.`,
     }
   }
 
-  // Journal entry
-  if (
-    /\b(journal|je_|gl_|general.?ledger|chart.?of.?accounts)\b/.test(name) ||
-    /\b(debit.?account|credit.?account|journal.?entry|posting.?date)\b/.test(headerStr)
-  ) {
+  // Journal entry / GL
+  const jeNameMatch = /\b(journal|je|gl|general.?ledger|chart.?of.?accounts|coa)\b/.test(name)
+  const jeHdrMatch  = /\b(debit.?account|credit.?account|journal.?entry|posting.?date|account.?code)\b/.test(headerStr)
+  if (jeNameMatch || jeHdrMatch) {
     return {
       classification: 'journal_entry',
-      confidence: 75,
-      reasoning: `Filename "${filename}" and/or column headers suggest this is a journal entry file (heuristic fallback).`,
+      confidence: 80,
+      reasoning: `Filename "${filename}" and/or column headers match journal entry patterns.`,
     }
   }
 
   // Expense report
-  if (
-    /\b(expense|reimbursement|travel|receipts)\b/.test(name) ||
-    /\b(expense.?category|reimbursable|mileage)\b/.test(headerStr)
-  ) {
+  const expNameMatch = /\b(expense|expenses|reimbursement|travel|receipts?)\b/.test(name)
+  const expHdrMatch  = /\b(expense.?category|reimbursable|mileage|cost.?center)\b/.test(headerStr)
+  if (expNameMatch || expHdrMatch) {
     return {
       classification: 'expense_report',
-      confidence: 72,
-      reasoning: `Filename "${filename}" and/or column headers suggest this is an expense report (heuristic fallback).`,
+      confidence: 78,
+      reasoning: `Filename "${filename}" and/or column headers match expense report patterns.`,
     }
   }
 
@@ -426,13 +422,53 @@ export async function classifyUpload(
   sampleRows: Record<string, string>[],
   categoryHint?: string,
 ): Promise<UploadClassificationResult> {
+  // ── Step 1: Heuristic first ─────────────────────────────────────────────────
+  // Fast, zero-cost, works without OpenAI. If confident, return immediately.
+  const heuristic = heuristicClassify(filename, headers)
+  if (heuristic && heuristic.confidence >= 80) {
+    // Still try OpenAI async for richer metadata (entity, period, column_mapping)
+    // but don't block on it — if it fails or disagrees with "other", heuristic wins
+    try {
+      const safeFilename = sanitizeForPrompt(filename).slice(0, 200)
+      const safeHeaders  = headers.slice(0, 30).map(h => sanitizeForPrompt(h).slice(0, 50))
+      const safeRows     = sampleRows.slice(0, 3).map(row =>
+        Object.fromEntries(Object.entries(row).slice(0, 10).map(([k, v]) => [k.slice(0, 50), String(v).slice(0, 80)]))
+      )
+      const metaPrompt = `Finance document metadata extraction only (classification already known: ${heuristic.classification}).
+Filename: "${safeFilename}"
+Headers: ${JSON.stringify(safeHeaders)}
+Sample: ${JSON.stringify(safeRows)}
+Return JSON: { "detected_entity": string|null, "suggested_period": {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}|null, "column_mapping": {"original_col":"canonical_name"} }
+canonical_name: date, amount, description, vendor, reference, balance, debit, credit, category`
+      const response = await withTimeout(
+        getOpenAI().chat.completions.create({
+          model: MODEL,
+          messages: [{ role: 'user', content: metaPrompt }],
+          temperature: 0,
+          response_format: { type: 'json_object' },
+        })
+      )
+      const meta = JSON.parse(response.choices[0].message.content || '{}')
+      return {
+        classification:   heuristic.classification,
+        confidence:       heuristic.confidence,
+        reasoning:        heuristic.reasoning,
+        detected_entity:  meta.detected_entity  || null,
+        suggested_period: meta.suggested_period || null,
+        column_mapping:   meta.column_mapping   || {},
+      }
+    } catch {
+      // OpenAI unavailable — return heuristic result without metadata
+      return { classification: heuristic.classification, confidence: heuristic.confidence, reasoning: heuristic.reasoning, detected_entity: null, suggested_period: null, column_mapping: {} }
+    }
+  }
+
+  // ── Step 2: Heuristic uncertain — use OpenAI for full classification ─────────
   const safeFilename = sanitizeForPrompt(filename).slice(0, 200)
   const safeHeaders  = headers.slice(0, 30).map(h => sanitizeForPrompt(h).slice(0, 50))
   const safeRows     = sampleRows.slice(0, 5).map(row =>
     Object.fromEntries(
-      Object.entries(row)
-        .slice(0, 15)
-        .map(([k, v]) => [k.slice(0, 50), String(v).slice(0, 100)])
+      Object.entries(row).slice(0, 15).map(([k, v]) => [k.slice(0, 50), String(v).slice(0, 100)])
     )
   )
 
@@ -453,7 +489,6 @@ Respond with JSON:
   "suggested_period": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"} or null,
   "column_mapping": { "original_col": "canonical_name" }
 }
-
 canonical_name must be one of: date, amount, description, vendor, reference, balance, debit, credit, category`
 
   try {
@@ -465,49 +500,38 @@ canonical_name must be one of: date, amount, description, vendor, reference, bal
         response_format: { type: 'json_object' },
       })
     )
-    const parsed = JSON.parse(response.choices[0].message.content || '{}')
+    const parsed          = JSON.parse(response.choices[0].message.content || '{}')
     const aiClassification = parsed.classification as string | undefined
     const aiConfidence     = Math.min(100, Math.max(0, Number(parsed.confidence) || 0))
 
-    // If AI returned 'other', always try heuristic — filename is a stronger signal
-    if (!aiClassification || aiClassification === 'other') {
-      const heuristic = heuristicClassify(filename, headers)
-      if (heuristic) {
-        return {
-          classification:   heuristic.classification,
-          confidence:       heuristic.confidence,
-          reasoning:        heuristic.reasoning,
-          detected_entity:  parsed.detected_entity  || null,
-          suggested_period: parsed.suggested_period || null,
-          column_mapping:   parsed.column_mapping   || {},
-        }
+    // If AI returns 'other', prefer heuristic if available
+    if ((!aiClassification || aiClassification === 'other') && heuristic) {
+      return {
+        classification:   heuristic.classification,
+        confidence:       heuristic.confidence,
+        reasoning:        heuristic.reasoning,
+        detected_entity:  parsed.detected_entity  || null,
+        suggested_period: parsed.suggested_period || null,
+        column_mapping:   parsed.column_mapping   || {},
       }
     }
 
     return {
       classification:   (aiClassification || 'other') as UploadClassificationResult['classification'],
       confidence:       aiConfidence,
-      reasoning:        parsed.reasoning        || '',
+      reasoning:        parsed.reasoning       || '',
       detected_entity:  parsed.detected_entity  || null,
       suggested_period: parsed.suggested_period || null,
       column_mapping:   parsed.column_mapping   || {},
     }
   } catch {
-    // OpenAI unavailable — use heuristic before falling back to 'other'
-    const heuristic = heuristicClassify(filename, headers)
+    // OpenAI failed — use heuristic if available
     if (heuristic) {
-      return {
-        classification:   heuristic.classification,
-        confidence:       heuristic.confidence,
-        reasoning:        heuristic.reasoning,
-        detected_entity:  null,
-        suggested_period: null,
-        column_mapping:   {},
-      }
+      return { classification: heuristic.classification, confidence: heuristic.confidence, reasoning: heuristic.reasoning, detected_entity: null, suggested_period: null, column_mapping: {} }
     }
     return {
       classification: 'other', confidence: 0,
-      reasoning: 'Classification failed — please use the dropdown to classify manually.',
+      reasoning: 'Could not classify — please use "Change type" to set it manually.',
       detected_entity: null, suggested_period: null, column_mapping: {},
     }
   }
