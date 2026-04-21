@@ -168,7 +168,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom: upgrade card */}
+      {/* Bottom: upgrade card + security badge */}
       <div className="px-3 pb-4 space-y-3">
         <div className="rounded-xl p-4" style={{ background: '#EFF6FF' }}>
           <div className="text-xs font-semibold mb-1" style={{ color: '#1E3A5F' }}>Starter Plan</div>
@@ -184,6 +184,18 @@ export function Sidebar() {
             Upgrade to Growth →
           </Link>
         </div>
+
+        {/* Security trust badge */}
+        <Link
+          href="/security"
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50 hover:bg-green-50 hover:border-green-100 transition-colors group"
+        >
+          <span className="text-green-500 text-base">🔒</span>
+          <div>
+            <div className="text-[10px] font-semibold text-gray-700 group-hover:text-green-700">AES-256 · TLS 1.3</div>
+            <div className="text-[9px] text-gray-400 group-hover:text-green-500">Your data is encrypted</div>
+          </div>
+        </Link>
       </div>
     </aside>
   )
