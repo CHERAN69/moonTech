@@ -20,7 +20,7 @@ const REFERENCE_PATTERNS = ['reference', 'ref', 'invoice', 'invoice no', 'invoic
 const DATE_FORMATS = [
   'MM/dd/yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd', 'MM-dd-yyyy',
   'dd-MM-yyyy', 'MMM d, yyyy', 'MMMM d, yyyy', 'MM/dd/yy',
-  'yyyy/MM/dd', 'd MMM yyyy', 'dd MMM yyyy',
+  'yyyy/MM/dd', 'd MMM yyyy', 'dd MMM yyyy', 'MMM d yyyy', 'MMM dd yyyy',
 ]
 
 function detectColumn(headers: string[], patterns: string[]): string | null {
@@ -67,8 +67,8 @@ function parseAmount(value: string): number | null {
   return isNaN(num) ? null : num
 }
 
-function detectSourceType(headers: string[], filename: string): TransactionType {
-  const fn = filename.toLowerCase()
+function detectSourceType(headers: string[], filename: string = ''): TransactionType {
+  const fn = (filename || '').toLowerCase()
   if (fn.includes('stripe')) return 'stripe'
   if (fn.includes('paypal')) return 'paypal'
   if (fn.includes('invoice') || fn.includes('inv')) return 'invoice'
