@@ -132,8 +132,8 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
         <div className="flex items-center gap-2">
           {/* Guidance when no confirmed bank statement yet */}
           {!canReconcile && uploads.length > 0 && (
-            <span className="text-xs text-gray-400">
-              Confirm a bank statement to run reconciliation
+            <span className="text-xs text-amber-600 font-medium">
+              ⚠ Use &quot;Change type ▾&quot; to set your bank file, then Run Reconciliation appears
             </span>
           )}
 

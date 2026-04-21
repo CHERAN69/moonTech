@@ -469,8 +469,8 @@ canonical_name must be one of: date, amount, description, vendor, reference, bal
     const aiClassification = parsed.classification as string | undefined
     const aiConfidence     = Math.min(100, Math.max(0, Number(parsed.confidence) || 0))
 
-    // If AI returned 'other' with low confidence, try heuristic before giving up
-    if ((!aiClassification || aiClassification === 'other') && aiConfidence < 60) {
+    // If AI returned 'other', always try heuristic — filename is a stronger signal
+    if (!aiClassification || aiClassification === 'other') {
       const heuristic = heuristicClassify(filename, headers)
       if (heuristic) {
         return {
