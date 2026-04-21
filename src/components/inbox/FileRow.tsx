@@ -165,7 +165,7 @@ export function FileRow({ row, onConfirm, onReclassify, onManualClassify, onDele
                 title="Change classification"
                 className="px-2.5 py-1 rounded-lg text-[10px] font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
               >
-                {row.classification === 'other' || !row.classification ? '⚠ Set type ▾' : 'Re-classify ▾'}
+                {row.classification === 'other' || !row.classification ? '⚠ Set type ▾' : 'Change type ▾'}
               </button>
               {showClassifyMenu && (
                 <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[160px]">

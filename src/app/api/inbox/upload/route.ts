@@ -237,8 +237,8 @@ export async function PATCH(req: NextRequest) {
     // Mark as manually classified with high confidence
     updates.classification_confidence    = 100
     updates.classification_reasoning     = 'Manually classified by user.'
-    // If reclassifying, move to classified state (needs re-confirm)
-    if (!body.status) updates.status = 'classified'
+    // Manual classification = user intent confirmed — auto-confirm unless caller overrides
+    if (!body.status) updates.status = 'confirmed'
   }
 
   const { error } = await supabase

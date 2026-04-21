@@ -353,7 +353,7 @@ export type UploadClassificationResult = {
 function heuristicClassify(
   filename: string,
   headers: string[],
-): { classification: string; confidence: number; reasoning: string } | null {
+): { classification: UploadClassificationResult['classification']; confidence: number; reasoning: string } | null {
   const name       = filename.toLowerCase().replace(/[^a-z0-9]/g, ' ')
   const headerStr  = headers.map(h => h.toLowerCase()).join(' ')
 
@@ -485,7 +485,7 @@ canonical_name must be one of: date, amount, description, vendor, reference, bal
     }
 
     return {
-      classification:   aiClassification || 'other',
+      classification:   (aiClassification || 'other') as UploadClassificationResult['classification'],
       confidence:       aiConfidence,
       reasoning:        parsed.reasoning        || '',
       detected_entity:  parsed.detected_entity  || null,
