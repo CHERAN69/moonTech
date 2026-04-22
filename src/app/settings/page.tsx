@@ -527,7 +527,7 @@ export default function SettingsPage() {
               {[
                 { name: 'QuickBooks Online', desc: 'Bi-directional sync for journal entries and transactions', connected: false, logo: '📊' },
                 { name: 'Xero',              desc: 'Bi-directional sync — pull transactions, push journal entries', connected: false, logo: '📗' },
-                { name: 'Stripe',            desc: 'Real-time payout and charge reconciliation (CSV available)', connected: true,  logo: '💳' },
+                { name: 'Stripe',            desc: 'Real-time payout and charge reconciliation (CSV available)', connected: false, logo: '💳' },
                 { name: 'PayPal',            desc: 'Business account transaction sync', connected: false, logo: '🅿️' },
                 { name: 'Plaid',             desc: 'Direct bank feed — 11,000+ US financial institutions', connected: false, logo: '🏦' },
                 { name: 'Gusto',             desc: 'Payroll journal entry automation', connected: false, logo: '💼' },

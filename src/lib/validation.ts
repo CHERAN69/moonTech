@@ -47,6 +47,7 @@ export const UpdateJournalEntrySchema = z.object({
   description: z.string().min(1).max(500).optional(),
   lines: z.array(JournalEntryLineSchema).min(2).optional(),
   note: z.string().max(2000).optional(),
+  expected_updated_at: z.string().optional(),
 })
 
 // ─── Close checklist ──────────────────────────────────────────────────────────

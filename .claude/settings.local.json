@@ -5,5 +5,29 @@
       "Bash(kill 63575)",
       "Bash(npx tsc:*)"
     ]
+  },
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "A tool is asking for permission to do something. Look at the input below and explain in plain English (no tech jargon) in 1-2 sentences: what will this action actually do, and is it safe to allow? Keep it simple enough for someone non-technical to understand. Input: $ARGUMENTS",
+            "statusMessage": "Explaining permission request..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '\\n<!-- session-end: %s -->\\n' \"$(date '+%Y-%m-%d %H:%M')\" >> /Users/cheranseripally/Desktop/MoonTechProjects/FinOpsAi/PROJECT_STATE.md 2>/dev/null || true",
+            "statusMessage": "Saving session marker..."
+          }
+        ]
+      }
+    ]
   }
 }

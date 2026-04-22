@@ -28,7 +28,7 @@ export async function PATCH(
     return NextResponse.json({ error: parse.error.issues[0].message }, { status: 422 })
   }
 
-  const { action, description, lines } = parse.data
+  const { action, description, lines, expected_updated_at } = parse.data
 
   // Approve/reject require admin+
   if (action === 'approve' || action === 'post') {
@@ -80,15 +80,26 @@ export async function PATCH(
       break
   }
 
-  const { data: updated, error: updateErr } = await supabase
+  let updateQuery = supabase
     .from('journal_entries')
     .update(updates)
     .eq('id', id)
     .eq('user_id', user.id)
-    .select()
-    .single()
+
+  if (expected_updated_at) {
+    updateQuery = updateQuery.eq('updated_at', expected_updated_at)
+  }
+
+  const { data: updated, error: updateErr } = await updateQuery.select().single()
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+
+  if (expected_updated_at && !updated) {
+    return NextResponse.json(
+      { error: 'This entry was modified by another user. Please refresh.' },
+      { status: 409 }
+    )
+  }
 
   // Audit log
   await supabase.from('audit_log').insert({
