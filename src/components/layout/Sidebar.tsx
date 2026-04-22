@@ -130,12 +130,12 @@ export function Sidebar() {
     <aside className="w-60 flex-shrink-0 flex flex-col border-r border-gray-100 bg-white h-screen sticky top-0">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-gray-100">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#1E3A5F' }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--navy)' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M2 8L6 12L14 4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <span className="font-bold text-base" style={{ color: '#1E3A5F' }}>FinOpsAi</span>
+        <span className="font-bold text-base" style={{ color: 'var(--navy)' }}>FinOpsAi</span>
       </div>
 
       {/* Navigation */}
@@ -156,7 +156,7 @@ export function Sidebar() {
                   ? 'text-white'
                   : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
               )}
-              style={active ? { background: '#1E3A5F' } : {}}
+              style={active ? { background: 'var(--navy)' } : {}}
             >
               <span className={active ? 'text-white' : 'text-gray-400'}>
                 <Icon />
@@ -170,16 +170,16 @@ export function Sidebar() {
 
       {/* Bottom: upgrade card + security badge */}
       <div className="px-3 pb-4 space-y-3">
-        <div className="rounded-xl p-4" style={{ background: '#EFF6FF' }}>
-          <div className="text-xs font-semibold mb-1" style={{ color: '#1E3A5F' }}>Starter Plan</div>
+        <div className="rounded-xl p-4 bg-blue-50 dark:bg-blue-950/30">
+          <div className="text-xs font-semibold mb-1" style={{ color: 'var(--navy)' }}>Starter Plan</div>
           <div className="text-xs text-gray-500 mb-3">876/1,000 transactions used</div>
-          <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: '87%', background: '#2E75B6' }}></div>
+          <div className="w-full h-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: '87%', background: 'var(--blue)' }}></div>
           </div>
           <Link
             href="/settings/billing"
             className="mt-3 block text-center text-xs font-medium py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
-            style={{ background: '#2E75B6' }}
+            style={{ background: 'var(--blue)' }}
           >
             Upgrade to Growth →
           </Link>
@@ -188,7 +188,7 @@ export function Sidebar() {
         {/* Security trust badge */}
         <Link
           href="/security"
-          className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50 hover:bg-green-50 hover:border-green-100 transition-colors group"
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50 hover:bg-green-50 hover:border-green-100 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-green-900/20 transition-colors group"
         >
           <span className="text-green-500 text-base">🔒</span>
           <div>
