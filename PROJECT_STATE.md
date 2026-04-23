@@ -103,17 +103,16 @@ src/lib/
 - `match_pairs` — individual transaction matches
 - `journal_entries` — close journal entries
 - `close_checklists` — close task lists
-- `audit_events` — audit trail
+- `audit_log` — audit trail (NOT `audit_events`)
 - `vendor_mappings` — historical vendor name mappings
-- `user_profiles` — extended user data
+- `profiles` — extended user data (NOT `user_profiles`)
 
 ### Added during refactor
-- `uploads` — inbox file uploads with AI classification (migration SQL in `all_migrations.sql` on Desktop — verify applied)
-- `vendor_rules` — learned auto-approve rules (verify applied)
+- `uploads` — inbox file uploads with AI classification ✅ LIVE
+- `vendor_rules` — learned auto-approve rules ✅ LIVE
 
-### ⚠️ Migration status unknown
-The `uploads` and `vendor_rules` tables may not be applied to Supabase yet.
-Check `supabase/` directory or run migrations before testing inbox/rules features.
+### ✅ Migration status verified 2026-04-22
+All tables confirmed present via REST API against live Supabase project.
 
 ---
 
@@ -130,10 +129,10 @@ Check `supabase/` directory or run migrations before testing inbox/rules feature
 
 ## WHAT'S NEXT (priority order)
 
-1. **Migration verification** — confirm `uploads` and `vendor_rules` tables exist in Supabase (check `supabase/` dir or run `all_migrations.sql` on Desktop)
+1. **Account deletion purge** — security page claims "30-day purge on account close" but no scheduled job exists; needs a Supabase Edge Function or pg_cron task
 2. **End-to-end test** — upload a CSV → classify → reconcile → review exceptions → approve → generate PDF report
-3. **Inbox /api/reconcile response** — verify the reconcile API returns `sessions` array (currently ClassificationQueue fetches `/api/reconcile?limit=50` and maps `json.sessions`)
-4. **TypeScript install** — `node_modules/.bin/tsc` is a broken symlink; run `npm install` to restore
+3. **CSP tightening** — current CSP uses `unsafe-inline`/`unsafe-eval` (required by Next.js); consider nonce-based approach for stricter policy if compliance requires it
+4. **HSTS preload** — submit domain to hstspreload.org once deployed to production domain
 
 ---
 
@@ -163,4 +162,19 @@ Check `supabase/` directory or run migrations before testing inbox/rules feature
 
 ---
 
-<!-- session-end: 2026-04-21 20:06 -->
+### Session 2026-04-23 — Security audit, dark mode, dropdown fix, audit trail rewrite, review stats fix
+
+- **Dark mode** — `ThemeProvider.tsx` added, CSS variables in `globals.css`, `TopBar.tsx` sun/moon toggle, `Sidebar.tsx` hardcoded hex colors → `var(--navy)`/`var(--blue)`
+- **Classification dropdown fix** — removed `overflow-hidden` from `ClassificationQueue.tsx` outer card; restored rounded corners via inner div wrappers so absolute-positioned dropdown escapes clipping
+- **Click-outside handler** — `FileRow.tsx` got `useRef` + `useEffect` to close dropdown on outside click
+- **Audit trail full rewrite** — `src/app/audit/page.tsx`: correct entity types (added `upload`, `vendor_rule`), all 18 real action types, per-type colored badges, filter applied on button click only, active filter chips, pagination (50/page)
+- **Review stats fixed** — `GET /api/exceptions` now returns `summary: { pending, resolved, total }` from parallel count queries; `review/page.tsx` uses these instead of computing from filtered list (was always showing 0 resolved)
+- **Session count sync** — `PATCH /api/exceptions/[id]` recomputes `matched_count`/`unmatched_count`/`flagged_count` on `reconciliation_sessions` after approve/reject/mark_resolved
+- **Vendor rule learning** — `learnRule()` fires on approve, learns vendor → GL category mapping
+- **Security audit** — verified RLS on all 9 tables, auth on all routes; found two gaps:
+  - HSTS missing → added `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
+  - CSP missing → added `Content-Security-Policy` (self + Supabase + Sentry; `unsafe-inline`/`unsafe-eval` for Next.js compat)
+- **Security page text fixed** — OpenAI section now accurately describes both phases: (1) 5-row sample for classification, (2) transaction summaries (amount/date/vendor/description) for anomaly explanation
+- **No git remote** — project is not a git repository; no push applicable
+
+<!-- session-end: 2026-04-23 -->

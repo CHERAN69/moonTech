@@ -14,7 +14,7 @@ const SECTIONS = [
   {
     icon: '🤖',
     title: 'What gets sent to AI (OpenAI)',
-    body: 'When you upload a file, a small sample of rows (up to 5 rows) and column headers are sent to OpenAI to classify the document type. Your full transaction data is never sent to OpenAI — only enough to identify whether a file is a bank statement, invoice, or payroll file. OpenAI does not use data submitted via the API to train its models.',
+    body: 'FinOpsAi uses OpenAI at two points in the workflow. (1) Classification: when you upload a file, up to 5 sample rows and column headers are sent to identify the document type (bank statement, invoice, payroll, etc). (2) Exception analysis: for unmatched or flagged transactions, the amount, date, vendor name, and description of those specific transactions are sent so the AI can explain why they are flagged and suggest a resolution. Your full transaction history is never bulk-exported to OpenAI — only the items actively under review. OpenAI does not use API-submitted data to train its models.',
   },
   {
     icon: '👁️',
