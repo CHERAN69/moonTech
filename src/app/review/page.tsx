@@ -467,6 +467,7 @@ function ReviewPageInner() {
   const initSessionId = searchParams.get('session_id') ?? ''
 
   const [items, setItems]             = useState<ExceptionItem[]>([])
+  const [summary, setSummary]         = useState({ pending: 0, resolved: 0, total: 0 })
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState<string | null>(null)
   const [statusFilter, setStatus]     = useState<FilterStatus>('all')
@@ -513,6 +514,7 @@ function ReviewPageInner() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setItems(json.exceptions ?? [])
+      if (json.summary) setSummary(json.summary)
       const total = json.total ?? json.exceptions?.length ?? 0
       if (total > (json.exceptions?.length ?? 0)) {
         setError(`Showing ${json.exceptions?.length ?? 0} of ${total} exceptions — use filters to narrow results and ensure high-severity items are visible.`)
@@ -567,8 +569,8 @@ function ReviewPageInner() {
     }
   }
 
-  const pending  = items.filter(i => !i.resolution).length
-  const resolved = items.filter(i =>  i.resolution).length
+  const pending  = summary.pending
+  const resolved = summary.resolved
   const highSev  = items.filter(i => i.flags?.some(f => f.severity === 'high')).length
 
   const TABS: { key: FilterStatus; label: string; count: number; color: string }[] = [
@@ -677,7 +679,7 @@ function ReviewPageInner() {
         )}
 
         {/* Success banner — shown when all exceptions are resolved */}
-        {!loading && items.length > 0 && pending === 0 && (
+        {!loading && summary.total > 0 && pending === 0 && (
           <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-green-500 flex-shrink-0">

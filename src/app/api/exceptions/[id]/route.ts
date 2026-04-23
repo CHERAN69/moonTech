@@ -153,6 +153,27 @@ export async function PATCH(
     ip_address:     ipAddr,
   })
 
+  // Sync session matched/unmatched/flagged counts after any resolution action
+  if (current.session_id && (action === 'approve' || action === 'reject' || action === 'mark_resolved')) {
+    const { data: sessionPairs } = await supabase
+      .from('match_pairs')
+      .select('status, resolution')
+      .eq('session_id', current.session_id)
+      .eq('user_id', user.id)
+
+    if (sessionPairs) {
+      const matched   = sessionPairs.filter(p => p.status === 'matched').length
+      const unmatched = sessionPairs.filter(p => p.status === 'unmatched' && !p.resolution).length
+      const flagged   = sessionPairs.filter(p => p.status === 'flagged'   && !p.resolution).length
+
+      await supabase
+        .from('reconciliation_sessions')
+        .update({ matched_count: matched, unmatched_count: unmatched, flagged_count: flagged })
+        .eq('id', current.session_id)
+        .eq('user_id', user.id)
+    }
+  }
+
   // Fire-and-forget rule learning on approve
   if (action === 'approve') {
     const vendorName = current.bank_transaction?.vendor || current.bank_transaction?.description || ''

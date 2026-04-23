@@ -55,7 +55,20 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const { data, error, count } = await query
+  // Fetch summary counts in parallel (unaffected by resolution/search filters)
+  const baseCountQuery = supabase
+    .from('match_pairs')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .in('status', status ? [status] : ['unmatched', 'flagged', 'duplicate', 'suggested'])
+
+  const sessionBase = sessionId ? baseCountQuery.eq('session_id', sessionId) : baseCountQuery
+
+  const [{ data, error, count }, { count: pendingCount }, { count: resolvedCount }] = await Promise.all([
+    query,
+    sessionBase.is('resolution', null),
+    sessionBase.not('resolution', 'is', null),
+  ])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -65,5 +78,10 @@ export async function GET(req: NextRequest) {
     limit,
     offset,
     hasMore: (count ?? 0) > offset + limit,
+    summary: {
+      pending:  pendingCount  ?? 0,
+      resolved: resolvedCount ?? 0,
+      total:    (pendingCount ?? 0) + (resolvedCount ?? 0),
+    },
   })
 }
