@@ -7,7 +7,7 @@
  * status, and expand/collapse for sample data and reasoning.
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ConfidenceBadge } from '@/components/trust/ConfidenceBadge'
 import { AIReasoningCard } from '@/components/trust/AIReasoningCard'
 
@@ -78,6 +78,19 @@ const CLASSIFIABLE_OPTIONS = [
 export function FileRow({ row, onConfirm, onReclassify, onManualClassify, onDelete }: FileRowProps) {
   const [expanded, setExpanded]             = useState(false)
   const [showClassifyMenu, setShowClassify] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showClassifyMenu) return
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowClassify(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showClassifyMenu])
+
   const statusCfg  = STATUS_CONFIG[row.status] ?? STATUS_CONFIG['processing']
   const classLabel = row.classification ? (CLASS_LABELS[row.classification] || row.classification) : '—'
 
@@ -159,10 +172,9 @@ export function FileRow({ row, onConfirm, onReclassify, onManualClassify, onDele
             </button>
           )}
           {row.status !== 'processing' && row.status !== 'error' && (
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setShowClassify(v => !v)}
-                title="Change classification"
                 className="px-2.5 py-1 rounded-lg text-[10px] font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 {row.classification === 'other' || !row.classification ? '⚠ Set type ▾' : 'Change type ▾'}

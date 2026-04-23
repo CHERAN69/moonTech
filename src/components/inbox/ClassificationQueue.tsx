@@ -121,9 +121,9 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-100">
       {/* Queue header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 rounded-t-2xl overflow-hidden">
         <div>
           <span className="text-sm font-semibold text-gray-900">Classification Queue</span>
           <span className="ml-2 text-xs text-gray-400">{uploads.length} files</span>
@@ -223,16 +223,18 @@ export function ClassificationQueue({ uploads, loading, onRefresh }: Classificat
       </div>
 
       {/* Rows */}
-      {uploads.map(row => (
-        <FileRow
-          key={row.id}
-          row={row}
-          onConfirm={handleConfirm}
-          onReclassify={handleReclassify}
-          onManualClassify={handleManualClassify}
-          onDelete={handleDelete}
-        />
-      ))}
+      <div className="overflow-hidden rounded-b-2xl">
+        {uploads.map(row => (
+          <FileRow
+            key={row.id}
+            row={row}
+            onConfirm={handleConfirm}
+            onReclassify={handleReclassify}
+            onManualClassify={handleManualClassify}
+            onDelete={handleDelete}
+          />
+        ))}
+      </div>
     </div>
   )
 }
