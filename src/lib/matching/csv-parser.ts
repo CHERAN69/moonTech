@@ -161,7 +161,7 @@ export async function parseCSV(buffer: Buffer, fileName: string): Promise<CSVPar
           source_type,
         })
       },
-      error: (err: Error) => {
+      error: (err: { message: string }) => {
         resolve({
           transactions: [],
           detected_columns: {},
