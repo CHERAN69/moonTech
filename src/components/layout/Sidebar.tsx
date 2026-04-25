@@ -16,12 +16,14 @@ function InboxIcon() {
   )
 }
 
-function AlertTriangleIcon() {
+function ReviewIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-      <line x1="12" y1="9" x2="12" y2="13"/>
-      <line x1="12" y1="17" x2="12.01" y2="17"/>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <circle cx="10" cy="10" r="1.5" fill="currentColor" stroke="none"/>
     </svg>
   )
 }
@@ -36,11 +38,14 @@ function BarChart3Icon() {
   )
 }
 
-function CheckCircleIcon() {
+function CloseIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 11l3 3L22 4"/>
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+      <polyline points="9 16 11 18 15 14"/>
     </svg>
   )
 }
@@ -79,11 +84,14 @@ function NavBadge({ count }: { count: number }) {
 
 // ─── Nav definition ────────────────────────────────────────────────────────
 
-const NAV = [
-  { label: 'Inbox',    href: '/inbox',    Icon: InboxIcon },
-  { label: 'Review',   href: '/review',   Icon: AlertTriangleIcon },
-  { label: 'Reports',  href: '/reports',  Icon: BarChart3Icon },
-  { label: 'Close',    href: '/close',    Icon: CheckCircleIcon },
+const NAV_WORKFLOW = [
+  { label: 'Inbox',   href: '/inbox',   Icon: InboxIcon   },
+  { label: 'Review',  href: '/review',  Icon: ReviewIcon  },
+  { label: 'Close',   href: '/close',   Icon: CloseIcon   },
+  { label: 'Reports', href: '/reports', Icon: BarChart3Icon },
+]
+
+const NAV_ADMIN = [
   { label: 'Audit',    href: '/audit',    Icon: FileTextIcon },
   { label: 'Settings', href: '/settings', Icon: SettingsIcon },
 ]
@@ -139,33 +147,67 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ label, href, Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          const badgeCount =
-            label === 'Review' ? reviewCount :
-            label === 'Inbox'  ? inboxCount  : 0
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        {/* Workflow */}
+        <div className="space-y-0.5">
+          <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Workflow</p>
+          {NAV_WORKFLOW.map(({ label, href, Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + '/')
+            const badgeCount =
+              label === 'Review' ? reviewCount :
+              label === 'Inbox'  ? inboxCount  : 0
 
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                active
-                  ? 'text-white'
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-              )}
-              style={active ? { background: 'var(--navy)' } : {}}
-            >
-              <span className={active ? 'text-white' : 'text-gray-400'}>
-                <Icon />
-              </span>
-              <span className="flex-1">{label}</span>
-              <NavBadge count={badgeCount} />
-            </Link>
-          )
-        })}
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                  active
+                    ? 'text-white'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                )}
+                style={active ? { background: 'var(--navy)' } : {}}
+              >
+                <span className={active ? 'text-white' : 'text-gray-400'}>
+                  <Icon />
+                </span>
+                <span className="flex-1">{label}</span>
+                <NavBadge count={badgeCount} />
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Divider */}
+        <div className="my-3 border-t border-gray-100" />
+
+        {/* Admin */}
+        <div className="space-y-0.5">
+          <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Admin</p>
+          {NAV_ADMIN.map(({ label, href, Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + '/')
+
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                  active
+                    ? 'text-white'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                )}
+                style={active ? { background: 'var(--navy)' } : {}}
+              >
+                <span className={active ? 'text-white' : 'text-gray-400'}>
+                  <Icon />
+                </span>
+                <span className="flex-1">{label}</span>
+              </Link>
+            )
+          })}
+        </div>
       </nav>
 
       {/* Bottom: upgrade card + security badge */}
