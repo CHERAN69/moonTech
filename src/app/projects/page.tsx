@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -151,19 +151,20 @@ function ProjectCard({ project, onReport }: { project: Project; onReport?: (id: 
   )
 }
 
+function TabSync({ onTab }: { onTab: (t: Tab) => void }) {
+  const searchParams = useSearchParams()
+  const tab = searchParams.get('tab') as Tab | null
+  useEffect(() => {
+    if (tab && ['new', 'in_process', 'completed'].includes(tab)) onTab(tab)
+  }, [tab, onTab])
+  return null
+}
+
 export default function ProjectsPage() {
-  const searchParams  = useSearchParams()
-  const tabParam      = searchParams.get('tab') as Tab | null
   const [data, setData]           = useState<ProjectsData | null>(null)
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<Tab>(tabParam ?? 'in_process')
-
-  useEffect(() => {
-    if (tabParam && ['new', 'in_process', 'completed'].includes(tabParam)) {
-      setActiveTab(tabParam)
-    }
-  }, [tabParam])
+  const [activeTab, setActiveTab] = useState<Tab>('in_process')
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -193,6 +194,10 @@ export default function ProjectsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Suspense fallback={null}>
+        <TabSync onTab={setActiveTab} />
+      </Suspense>
+
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-8 py-6">
         <h1 className="text-xl font-bold text-gray-900">Reconciliation Engagements</h1>

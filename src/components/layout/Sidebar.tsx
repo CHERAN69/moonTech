@@ -2,8 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { cn } from '@/lib/utils'
+
+// Isolated component so useSearchParams is inside a Suspense boundary
+function TabReader({ onTab }: { onTab: (t: string | null) => void }) {
+  const searchParams = useSearchParams()
+  const tab = searchParams.get('tab')
+  useEffect(() => { onTab(tab) }, [tab, onTab])
+  return null
+}
 
 // ─── Icons ─────────────────────────────────────────────────────────────────
 
@@ -123,9 +131,8 @@ const NAV_ADMIN = [
 // ─── Sidebar ────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
-  const pathname     = usePathname()
-  const searchParams = useSearchParams()
-  const activeTab    = searchParams.get('tab')
+  const pathname = usePathname()
+  const [activeTab, setActiveTab]     = useState<string | null>(null)
   const [reviewCount, setReviewCount] = useState(0)
 
   useEffect(() => {
@@ -156,6 +163,10 @@ export function Sidebar() {
         </div>
         <span className="font-bold text-base" style={{ color: 'var(--navy)' }}>FinOpsAi</span>
       </div>
+
+      <Suspense fallback={null}>
+        <TabReader onTab={setActiveTab} />
+      </Suspense>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
