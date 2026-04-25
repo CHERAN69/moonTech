@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 type ProjectStatus = 'new' | 'in_process' | 'completed'
@@ -30,9 +31,9 @@ interface ProjectsData {
 type Tab = 'new' | 'in_process' | 'completed'
 
 const TABS: { key: Tab; label: string; color: string; dot: string }[] = [
-  { key: 'new',        label: 'New Projects',        color: 'text-blue-600',  dot: 'bg-blue-400'  },
-  { key: 'in_process', label: 'In Process',           color: 'text-amber-600', dot: 'bg-amber-400' },
-  { key: 'completed',  label: 'Completed',            color: 'text-green-600', dot: 'bg-green-400' },
+  { key: 'new',        label: 'New Engagements',      color: 'text-blue-600',  dot: 'bg-blue-400'  },
+  { key: 'in_process', label: 'Open Reconciliations', color: 'text-amber-600', dot: 'bg-amber-400' },
+  { key: 'completed',  label: 'Closed Periods',       color: 'text-green-600', dot: 'bg-green-400' },
 ]
 
 function fmtDate(iso: string) {
@@ -56,9 +57,9 @@ function StatusDot({ status }: { status: ProjectStatus }) {
 
 function EmptyTab({ tab }: { tab: Tab }) {
   const msgs: Record<Tab, { icon: string; title: string; sub: string }> = {
-    new:        { icon: '📂', title: 'No new projects',         sub: 'Upload files in the Inbox to start a new reconciliation project.' },
-    in_process: { icon: '⚙️', title: 'Nothing in progress',     sub: 'Run a reconciliation from the Inbox to see active projects here.' },
-    completed:  { icon: '✅', title: 'No completed projects yet', sub: 'Projects appear here once all exceptions are resolved.' },
+    new:        { icon: '📂', title: 'No new engagements',          sub: 'Upload source files to begin a new reconciliation engagement.' },
+    in_process: { icon: '⚙️', title: 'No open reconciliations',     sub: 'Start a reconciliation from a new engagement to see active work here.' },
+    completed:  { icon: '✅', title: 'No closed periods yet',        sub: 'Engagements appear here once all exceptions are reviewed and resolved.' },
   }
   const m = msgs[tab]
   return (
@@ -151,10 +152,18 @@ function ProjectCard({ project, onReport }: { project: Project; onReport?: (id: 
 }
 
 export default function ProjectsPage() {
-  const [data, setData]         = useState<ProjectsData | null>(null)
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<Tab>('in_process')
+  const searchParams  = useSearchParams()
+  const tabParam      = searchParams.get('tab') as Tab | null
+  const [data, setData]           = useState<ProjectsData | null>(null)
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>(tabParam ?? 'in_process')
+
+  useEffect(() => {
+    if (tabParam && ['new', 'in_process', 'completed'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam])
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -186,8 +195,8 @@ export default function ProjectsPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-8 py-6">
-        <h1 className="text-xl font-bold text-gray-900">Projects</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Track reconciliation engagements from intake to completed financial report</p>
+        <h1 className="text-xl font-bold text-gray-900">Reconciliation Engagements</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Manage period-end reconciliations from intake through financial close and reporting</p>
       </div>
 
       {/* Tabs */}
@@ -249,10 +258,10 @@ export default function ProjectsPage() {
                 <span className="text-2xl">📋</span>
                 <div>
                   <p className="text-sm font-semibold text-green-900">
-                    {counts.completed} completed project{counts.completed !== 1 ? 's' : ''} ready for reporting
+                    {counts.completed} closed period{counts.completed !== 1 ? 's' : ''} ready for reporting
                   </p>
                   <p className="text-xs text-green-700 mt-0.5">
-                    Generate a formal financial reconciliation report for any completed project — includes exception log, journal entries, and certification page.
+                    Generate a formal financial reconciliation report — includes exception resolution log, journal entries, audit trail, and controller sign-off page.
                   </p>
                 </div>
               </div>

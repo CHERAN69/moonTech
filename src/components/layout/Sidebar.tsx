@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -95,11 +95,12 @@ function NavBadge({ count }: { count: number }) {
 // ─── Nav definition ────────────────────────────────────────────────────────
 
 const NAV_WORKFLOW = [
-  { label: 'Projects', href: '/projects', Icon: FolderIcon    },
-  { label: 'Inbox',    href: '/inbox',    Icon: InboxIcon     },
-  { label: 'Review',   href: '/review',   Icon: ReviewIcon    },
-  { label: 'Close',    href: '/close',    Icon: CloseIcon     },
-  { label: 'Reports',  href: '/reports',  Icon: BarChart3Icon },
+  { label: 'New Engagements',      href: '/projects?tab=new',        Icon: FolderIcon,    tab: 'new'        },
+  { label: 'Open Reconciliations', href: '/projects?tab=in_process', Icon: InboxIcon,     tab: 'in_process' },
+  { label: 'Closed Periods',       href: '/projects?tab=completed',  Icon: BarChart3Icon, tab: 'completed'  },
+  { label: 'Exception Review',     href: '/review',                  Icon: ReviewIcon,    tab: null         },
+  { label: 'Period Close',         href: '/close',                   Icon: CloseIcon,     tab: null         },
+  { label: 'Reports',              href: '/reports',                 Icon: FileTextIcon,  tab: null         },
 ]
 
 const NAV_ADMIN = [
@@ -110,13 +111,13 @@ const NAV_ADMIN = [
 // ─── Sidebar ────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname     = usePathname()
+  const searchParams = useSearchParams()
+  const activeTab    = searchParams.get('tab')
   const [reviewCount, setReviewCount] = useState(0)
-  const [inboxCount, setInboxCount]   = useState(0)
 
   useEffect(() => {
     const fetchCounts = async () => {
-      // Review badge: pending exceptions count
       try {
         const res = await fetch('/api/exceptions?resolution=pending&limit=1', { cache: 'no-store' })
         if (res.ok) {
@@ -124,20 +125,7 @@ export function Sidebar() {
           const total = data?.total ?? data?.exceptions?.length ?? 0
           setReviewCount(typeof total === 'number' ? total : 0)
         }
-      } catch {
-        // Silently fail — badge just won't show
-      }
-
-      // Inbox badge: unclassified uploads count (endpoint created in Phase 2)
-      try {
-        const res = await fetch('/api/inbox/count', { cache: 'no-store' })
-        if (res.ok) {
-          const data = await res.json()
-          setInboxCount(data?.unclassified ?? 0)
-        }
-      } catch {
-        // Silently fail — Phase 2 creates this endpoint
-      }
+      } catch { /* badge just won't show */ }
     }
 
     fetchCounts()
@@ -161,12 +149,11 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         {/* Workflow */}
         <div className="space-y-0.5">
-          <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Workflow</p>
-          {NAV_WORKFLOW.map(({ label, href, Icon }) => {
-            const active = pathname === href || pathname.startsWith(href + '/')
-            const badgeCount =
-              label === 'Review' ? reviewCount :
-              label === 'Inbox'  ? inboxCount  : 0
+          {NAV_WORKFLOW.map(({ label, href, Icon, tab }) => {
+            const active = tab
+              ? pathname.startsWith('/projects') && activeTab === tab
+              : pathname === href || pathname.startsWith(href + '/')
+            const badgeCount = label === 'Exception Review' ? reviewCount : 0
 
             return (
               <Link
@@ -193,9 +180,7 @@ export function Sidebar() {
         {/* Divider */}
         <div className="my-3 border-t border-gray-100" />
 
-        {/* Admin */}
         <div className="space-y-0.5">
-          <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Admin</p>
           {NAV_ADMIN.map(({ label, href, Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
 
